@@ -156,7 +156,7 @@ fun SettingsScreen(
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("درباره صالحی‌لاو", fontWeight = FontWeight.Bold)
+                Text("درباره SalehiLove ❤️", fontWeight = FontWeight.Bold)
                 Text(
                     "نسخه ۱٫۰ — ساخته‌شده با ❤️\nهمه داده‌ها فقط روی همین گوشی ذخیره می‌شوند.",
                     style = MaterialTheme.typography.bodySmall,
