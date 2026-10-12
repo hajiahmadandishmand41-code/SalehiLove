@@ -10,9 +10,9 @@
     <application
         android:name=".SalehiLoveApp"
         android:allowBackup="false"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/salehi_portrait"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/salehi_portrait"
         android:supportsRtl="true"
         android:theme="@style/Theme.SalehiLove">
 
