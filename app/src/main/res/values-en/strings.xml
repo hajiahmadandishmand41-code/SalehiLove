@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Salehi Love</string>
+    <string name="tagline">Love, learning and planning</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_learn">Learn</string>
+    <string name="nav_planner">Planner</string>
+    <string name="nav_personal">Personal</string>
+    <string name="nav_settings">Settings</string>
+    <string name="reminder_channel_name">Daily plan reminders</string>
+    <string name="reminder_morning">Good morning! Check today\'s plan.</string>
+    <string name="reminder_noon">Midday review time — revise some words.</string>
+    <string name="reminder_night">Good night! Write today\'s memories.</string>
+</resources>

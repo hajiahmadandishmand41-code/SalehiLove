@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.salehilove.core.security'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+apply from: "$rootDir/scripts/offline-conventions.gradle"
+
+dependencies {
+    implementation project(':core:common')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    testImplementation 'junit:junit:4.13.2'
+}

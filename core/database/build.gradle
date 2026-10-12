@@ -1,0 +1,38 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.salehilove.core.database'
+    compileSdk 35
+
+    defaultConfig {
+        minSdk 26
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    testOptions {
+        unitTests.all { test ->
+            test.maxHeapSize = '768m'
+        }
+    }
+}
+
+apply from: "$rootDir/scripts/offline-conventions.gradle"
+
+dependencies {
+    api project(':core:common')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3'
+    testImplementation project(':core:security')
+    testImplementation 'junit:junit:4.13.2'
+    // Real SQLite engine for JVM unit tests of the schema, DAOs and migrations.
+    testImplementation 'org.xerial:sqlite-jdbc:3.41.2.2'
+}
