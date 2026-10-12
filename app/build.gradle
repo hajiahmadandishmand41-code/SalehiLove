@@ -37,6 +37,31 @@ android {
     }
 }
 
+
+// Package the verified HAvoice instructor portrait as a local Android resource.
+// The committed Base64 source keeps the image available without any network at runtime.
+def salehiPortraitSource = rootProject.file('art/salehi_portrait.jpg.b64')
+def salehiBrandResDir = file("$buildDir/generated/res/salehiBrand")
+def salehiPortraitOutput = new File(salehiBrandResDir, 'drawable-nodpi/salehi_portrait.jpg')
+
+android.sourceSets.main.res.srcDir(salehiBrandResDir)
+
+tasks.register('prepareSalehiBrandAsset') {
+    inputs.file(salehiPortraitSource)
+    outputs.file(salehiPortraitOutput)
+    doLast {
+        if (!salehiPortraitSource.isFile()) {
+            throw new GradleException('Missing verified brand photo: ' + salehiPortraitSource)
+        }
+        salehiPortraitOutput.parentFile.mkdirs()
+        def encodedPhoto = salehiPortraitSource.getText('UTF-8').replaceAll(/\s+/, '')
+        salehiPortraitOutput.bytes = java.util.Base64.getDecoder().decode(encodedPhoto)
+    }
+}
+tasks.named('preBuild').configure {
+    dependsOn(tasks.named('prepareSalehiBrandAsset'))
+}
+
 apply from: "$rootDir/scripts/offline-conventions.gradle"
 
 dependencies {
