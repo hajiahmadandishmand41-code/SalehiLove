@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -182,6 +183,9 @@ private fun AppRoot(container: AppContainer) {
     val current = nav.current
     val topLevel = current == activeTab.route
 
+    // Handle Android system Back exactly like the in-app back arrow.
+    BackHandler(enabled = nav.canPop) { nav.pop() }
+
     Scaffold(
         topBar = {
             if (!topLevel) {
@@ -271,7 +275,7 @@ private fun titleFor(route: String): String = when {
     route.startsWith("planner") -> "برنامه‌ریز"
     route.startsWith("words") -> "واژه‌ها"
     route.startsWith("notes") -> "یادداشت‌ها"
-    else -> "صالحی‌لاو"
+    else -> "SalehiLove ❤️"
 }
 
 @Composable
