@@ -2,6 +2,7 @@ package com.salehilove.app
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -35,8 +35,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -110,34 +112,55 @@ fun DashboardScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Header with greeting + date + profile photo.
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
+
+        // Branded hero: the real instructor portrait is a bundled local resource.
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(176.dp)
+                .clip(RoundedCornerShape(22.dp)),
         ) {
-            val profilePath = container.profilePhotoPath()
-            if (profilePath != null) {
-                val bmp = remember(profilePath) {
-                    android.graphics.BitmapFactory.decodeFile(profilePath)
-                }
-                if (bmp != null) {
-                    Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = "عکس پروفایل",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape),
-                    )
-                    Spacer(Modifier.padding(4.dp))
-                }
-            }
-            Column {
-                Text("صالحی ❤️ لاو", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                val today = LocalDate.now()
+            Image(
+                painter = painterResource(id = R.drawable.salehi_portrait),
+                contentDescription = "عکس مدرس",
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color(0x4416120B),
+                                Color(0x7716120B),
+                                Color(0xCC16120B),
+                            ),
+                        ),
+                    ),
+            )
+            Column(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 Text(
-                    "${PersianCalendar.weekdayName(today)}، ${PersianCalendar.formatDate(today)}",
-                    color = MaterialTheme.colorScheme.primary,
+                    "SalehiLove ❤️",
+                    color = Color(0xFFFFD783),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "علم، عشق و رشد روزانه",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    "${PersianCalendar.weekdayName(LocalDate.now())}، ${PersianCalendar.formatDate(LocalDate.now())}",
+                    color = Color(0xFFF2E5C5),
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }
