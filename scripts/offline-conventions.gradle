@@ -1,0 +1,38 @@
+/*
+ * Optional conventions used only by the sandboxed offline build environment.
+ *
+ * On a normal machine (Android Studio + internet) this file is a no-op:
+ *  - SALEHILOVE_JAVAC_SHIM, when set, points at an `javac`-compatible CLI
+ *    (Eclipse ECJ) used because the sandbox JVM is a JRE without jdk.compiler.
+ *  - Everything else (offline m2 repo, aapt2 override, daemon memory) lives
+ *    in the environment's own GRADLE_USER_HOME/gradle.properties, not here.
+ */
+def shim = System.getenv('SALEHILOVE_JAVAC_SHIM')
+if (shim != null && new File(shim).exists()) {
+    tasks.withType(JavaCompile).configureEach {
+        options.fork = true
+        options.forkOptions.executable = shim
+    }
+}
+
+/*
+ * In the sandboxed offline environment the lint-gradle artifact is not present
+ * in the local mirror; the extractAnnotations task (which only packages
+ * @IntDef-style annotations for library consumers) is not needed to build or
+ * run this app, so we skip it there. On a normal machine nothing changes.
+ */
+if (System.getenv('SALEHILOVE_OFFLINE_M2') != null) {
+    tasks.matching { it.name ==~ /extract.*Annotations/ }.configureEach {
+        enabled = false
+    }
+    // The disabled extractAnnotations task writes an undeclared output file
+    // (typedefs.txt) that consumer tasks (sync*LibJars) read as an input.
+    // Create empty recipes at the deterministic AGP locations so validation
+    // passes. Only needed in the offline mirror environment.
+    ['debug', 'release'].each { v ->
+        def f = new File(project.buildDir,
+            "intermediates/annotations_typedef_file/${v}/extract${v.capitalize()}Annotations/typedefs.txt")
+        f.parentFile.mkdirs()
+        if (!f.exists()) f.text = ''
+    }
+}

@@ -1,0 +1,38 @@
+import org.gradle.api.initialization.resolve.RepositoriesMode
+
+pluginManagement {
+    repositories {
+        // Offline mirror used by the sandboxed CI build (see BUILD.md).
+        // Enabled only when SALEHILOVE_OFFLINE_M2 points at a local m2 repository.
+        def offlineM2 = System.getenv('SALEHILOVE_OFFLINE_M2')
+        if (offlineM2 != null) {
+            maven { url offlineM2 }
+        }
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        def offlineM2 = System.getenv('SALEHILOVE_OFFLINE_M2')
+        if (offlineM2 != null) {
+            maven { url offlineM2 }
+        }
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'SalehiLove'
+include ':app'
+include ':core:common'
+include ':core:designsystem'
+include ':core:security'
+include ':core:database'
+include ':feature:learning'
+include ':feature:personal'
+include ':feature:planner'
+include ':feature:backup'
