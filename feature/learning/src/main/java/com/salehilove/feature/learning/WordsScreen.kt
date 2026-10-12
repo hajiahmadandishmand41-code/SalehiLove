@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -42,7 +44,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.Word
 import com.salehilove.core.database.repo.WordRepository
@@ -160,41 +164,144 @@ fun WordsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f),
                 ) {
-                    items(ui.words, key = { it.id }) { word ->
-                        Card(Modifier.fillMaxWidth()) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            ),
+                        ) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(word.english, fontWeight = FontWeight.Bold)
-                                    Text(word.meaning, color = MaterialTheme.colorScheme.primary)
-                                    if (word.phonetic.isNotBlank()) {
-                                        Text(word.phonetic, style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    "واژه انگلیسی",
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Text(
+                                    "معنی فارسی",
+                                    modifier = Modifier.weight(1f),
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.End,
+                                )
+                            }
+                        }
+                    }
+                    items(ui.words, key = { it.id }) { word ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                            ),
+                        ) {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(
+                                        Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Text(
+                                            word.english,
+                                            fontWeight = FontWeight.Bold,
+                                            maxLines = 2,
+                                        )
+                                        if (word.phonetic.isNotBlank()) {
+                                            Text(
+                                                word.phonetic,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        if (word.topic.isNotBlank()) {
+                                            Text(
+                                                word.topic,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
                                     }
-                                    if (word.topic.isNotBlank()) {
-                                        Text(word.topic, style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        withContext(Dispatchers.IO) { runCatching { repo.setFavorite(word.id, !word.favorite) } }
-                                        reload()
-                                    }
-                                }) {
-                                    Icon(
-                                        if (word.favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                        contentDescription = if (word.favorite) "حذف از منتخب‌ها" else "افزودن به منتخب‌ها",
-                                        tint = MaterialTheme.colorScheme.primary,
+                                    Text(
+                                        word.meaning,
+                                        modifier = Modifier.weight(1f),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        textAlign = TextAlign.End,
                                     )
                                 }
-                                IconButton(onClick = { editor = word }) {
-                                    Icon(Icons.Filled.Edit, contentDescription = "ویرایش")
+                                if (word.example.isNotBlank() || word.exampleFa.isNotBlank()) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        if (word.example.isNotBlank()) {
+                                            Text(
+                                                word.example,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        if (word.exampleFa.isNotBlank()) {
+                                            Text(
+                                                word.exampleFa,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                textAlign = TextAlign.End,
+                                            )
+                                        }
+                                    }
                                 }
-                                IconButton(onClick = { deleting = word }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "حذف", tint = MaterialTheme.colorScheme.error)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    IconButton(
+                                        modifier = Modifier.size(36.dp),
+                                        onClick = {
+                                            scope.launch {
+                                                withContext(Dispatchers.IO) {
+                                                    runCatching { repo.setFavorite(word.id, !word.favorite) }
+                                                }
+                                                reload()
+                                            }
+                                        },
+                                    ) {
+                                        Icon(
+                                            if (word.favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                            contentDescription = if (word.favorite) "حذف از منتخب‌ها" else "افزودن به منتخب‌ها",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                    IconButton(
+                                        modifier = Modifier.size(36.dp),
+                                        onClick = { editor = word },
+                                    ) {
+                                        Icon(Icons.Filled.Edit, contentDescription = "ویرایش")
+                                    }
+                                    IconButton(
+                                        modifier = Modifier.size(36.dp),
+                                        onClick = { deleting = word },
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = "حذف",
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
                                 }
                             }
                         }
