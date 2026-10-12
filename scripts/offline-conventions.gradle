@@ -36,3 +36,14 @@ if (System.getenv('SALEHILOVE_OFFLINE_M2') != null) {
         if (!f.exists()) f.text = ''
     }
 }
+
+/*
+ * com.android.tools.lint:lint-gradle is not mirrored in the offline sandbox,
+ * so lint tasks (including lintVital for release builds) are skipped there.
+ * On a normal machine with network access, lint runs as usual.
+ */
+if (System.getenv('SALEHILOVE_OFFLINE_M2') != null) {
+    tasks.matching { it.name.toLowerCase(Locale.ROOT).contains('lint') }.configureEach {
+        enabled = false
+    }
+}

@@ -97,4 +97,9 @@ class DiaryRepository(
     fun byIdDecrypted(id: Long): DecryptedEntry? = dao.byId(id)?.let(::decrypt)
 
     fun searchTitles(query: String): List<DiaryEntry> = dao.searchTitles(query.trim())
+
+    /** Vault access for the backup container (portable, re-encrypted on import). */
+    fun encryptText(plainText: String): ByteArray = encrypt(plainText)
+
+    fun decryptText(blob: ByteArray): String = decrypt(blob)
 }

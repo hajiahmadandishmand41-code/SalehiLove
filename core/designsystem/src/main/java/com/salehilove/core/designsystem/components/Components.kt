@@ -34,9 +34,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SectionCard(
     title: String,
-    subtitle: String,
+    subtitle: String = "",
     icon: ImageVector,
-    onClick: () -> Unit,
+    onClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.primary,
     content: @Composable () -> Unit = {},

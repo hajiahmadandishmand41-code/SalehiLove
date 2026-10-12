@@ -30,6 +30,19 @@ object PersianCalendar {
         text.forEach { c -> append(if (c in '0'..'9') persianDigits[c - '0'] else c) }
     }
 
+    /** Converts Persian (۰-۹) and Arabic-Indic (٠-٩) digits back to ASCII. */
+    fun toEnglishDigits(text: String): String = buildString(text.length) {
+        text.forEach { c ->
+            append(
+                when (c) {
+                    in '۰'..'۹' -> '0' + (c - '۰')
+                    in '٠'..'٩' -> '0' + (c - '٠')
+                    else -> c
+                },
+            )
+        }
+    }
+
     data class JalaliDate(val year: Int, val month: Int, val day: Int) {
         /** e.g. "۱۲ مهر ۱۴۰۴" */ fun toPersianString(): String =
             toPersianDigits("$day ${jalaliMonthNames[month - 1]} $year")

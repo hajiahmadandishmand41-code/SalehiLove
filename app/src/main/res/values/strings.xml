@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">صالحی‌لاو</string>
+    <string name="tagline">عشق، علم و برنامه‌ریزی</string>
+    <string name="nav_home">خانه</string>
+    <string name="nav_learn">یادگیری</string>
+    <string name="nav_planner">برنامه</string>
+    <string name="nav_personal">شخصی</string>
+    <string name="nav_settings">تنظیمات</string>
+    <string name="reminder_channel_name">یادآورهای برنامه روزانه</string>
+    <string name="reminder_morning">صبح بخیر! برنامه امروز را ببین.</string>
+    <string name="reminder_noon">زمان مرور نیم‌روز — چند واژه مرور کن.</string>
+    <string name="reminder_night">شب بخیر! خاطرات امروز را بنویس.</string>
+</resources>

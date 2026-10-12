@@ -1,6 +1,6 @@
 package com.salehilove.core.database
 
-import org.json.JSONArray
+import com.salehilove.core.common.Json
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -133,15 +133,10 @@ object Mappers {
 
     fun jsonArrayToStrings(json: String): List<String> {
         if (json.isBlank()) return emptyList()
-        val arr = JSONArray(json)
-        return List(arr.length()) { arr.getString(it) }
+        return (Json.parse(json) as? List<*>)?.map { it?.toString() ?: "" } ?: emptyList()
     }
 
-    fun stringsToJson(list: List<String>): String {
-        val arr = JSONArray()
-        list.forEach(arr::put)
-        return arr.toString()
-    }
+    fun stringsToJson(list: List<String>): String = Json.write(list)
 
     fun millisToDateTime(millis: Long?): LocalDateTime? =
         millis?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }

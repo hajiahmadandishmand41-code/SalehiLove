@@ -175,14 +175,18 @@ class BackupCodecTest {
         try {
             codec.import(db, "not json at all") { ByteArray(0) }
             error("expected rejection")
-        } catch (expected: org.json.JSONException) {}
+        } catch (expected: com.salehilove.core.common.Json.JsonException) {}
     }
 
     @Test
     fun `export survives a future format guard`() {
         populatedDb()
         val json = codec.export(db) { "x" }
-        val bumped = org.json.JSONObject(json).put("format", 99)
+        val bumped = buildString {
+            append(json.substringBefore("\"format\""))
+            append("\"format\":99")
+            append(json.substringAfter("\"format\":1"))
+        }
         try {
             codec.import(db, bumped.toString()) { ByteArray(0) }
             error("expected rejection")

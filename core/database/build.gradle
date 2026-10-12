@@ -35,7 +35,4 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     // Real SQLite engine for JVM unit tests of the schema, DAOs and migrations.
     testImplementation 'org.xerial:sqlite-jdbc:3.41.2.2'
-    // The Android framework provides org.json at runtime; this is the real
-    // implementation for the JVM unit-test classpath only (never packaged).
-    testImplementation 'org.json:json:20240303'
 }

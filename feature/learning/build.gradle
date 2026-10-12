@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.salehilove.TODO'
+    namespace 'com.salehilove.feature.learning'
     compileSdk 35
     defaultConfig { minSdk 26 }
     compileOptions {
@@ -12,4 +12,20 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = '17' }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.8'
+    }
+}
+
+apply from: "$rootDir/scripts/offline-conventions.gradle"
+
+dependencies {
+    implementation project(':core:common')
+    implementation project(':core:designsystem')
+    implementation project(':core:database')
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 }
