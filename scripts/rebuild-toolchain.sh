@@ -25,6 +25,7 @@ set -euo pipefail
 
 AB=/home/user/android-build
 DL=$AB/dl
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$AB/tools" "$DL"
 cd "$DL"
 
@@ -141,7 +142,7 @@ curl -s https://registry.npmjs.org/kotlin-compiler/1.9.22 | python3 -c "import j
 curl -sL -o kotlin-compiler-1.9.22.tgz "$(cat kc-url.txt)"
 mkdir -p kc && tar xzf kotlin-compiler-1.9.22.tgz -C kc
 # relocator source lives in this repo — copy it
-cp "$(dirname "$0")/../tools-src/Relocate.kt" "$AB/tools/relocate/src/Relocate.kt"
+cp "$REPO_ROOT/tools-src/Relocate.kt" "$AB/tools/relocate/src/Relocate.kt"
 G="$AB/tools/gradle-8.11.1/lib"
 export JAVA_HOME="$AB/tools/jdk-21"
 KCP="$G/kotlin-compiler-embeddable-2.0.20.jar:$G/kotlin-stdlib-2.0.20.jar:$G/kotlin-script-runtime-2.0.20.jar:$G/kotlin-reflect-2.0.20.jar:$G/trove4j-1.0.20200330.jar:$G/guava-32.1.2-jre.jar:$G/kotlinx-coroutines-core-jvm-1.6.4.jar:$G/annotations-24.0.1.jar"
@@ -230,7 +231,7 @@ SDK="$AB/sdk"
 rm -rf "$SDK" && mkdir -p "$SDK/platforms/android-35" "$SDK/licenses" "$SDK/build-tools/35.0.0"
 rm -rf psdks
 git clone --filter=blob:none --sparse --depth 1 https://github.com/MagicFoundation/PlatformSDKs psdks
-( cd psdks && git fetch --deepen 30 --quiet )
+( cd psdks && git fetch --unshallow --quiet )
 C=$( cd psdks && for c in $(git rev-list --all); do
       if git ls-tree -r $c --name-only 2>/dev/null | grep -q "^Android/platforms/android-35/android.jar$"; then echo $c; break; fi
     done )

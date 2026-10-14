@@ -23,6 +23,7 @@ class AppNav(initial: String) {
     val state: List<String> get() = stack.value
 
     fun push(route: String) {
+        if (stack.value.lastOrNull() == route) return
         stack.value = stack.value + route
     }
 
@@ -65,9 +66,9 @@ class AppNav(initial: String) {
             text.split(SEP).filter { it.isNotBlank() }.ifEmpty { listOf(HOME) },
         )
 
-        val SAVER: Saver<AppNav, *> = Saver(
+        val SAVER: Saver<AppNav, String> = Saver(
             save = { nav -> serialize(nav) },
-            restore = { saved -> deserialize(saved as String) },
+            restore = { saved -> deserialize(saved) },
         )
     }
 }

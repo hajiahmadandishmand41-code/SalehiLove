@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.salehilove.core.database.Reminder
 import com.salehilove.core.database.dao.PlannerDao
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.EmptyState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,7 +59,6 @@ fun RemindersPanel(dao: PlannerDao, context: android.content.Context) {
             runCatching { withContext(Dispatchers.IO) { dao.reminders() } }
                 .onSuccess { list ->
                     reminders = list
-                    // Seed defaults on first open.
                     if (list.isEmpty()) {
                         withContext(Dispatchers.IO) {
                             defaultReminders.forEach { dao.insertReminder(it) }
@@ -77,11 +76,11 @@ fun RemindersPanel(dao: PlannerDao, context: android.content.Context) {
             EmptyState("یادآوری تعریف نشده")
         } else {
             reminders.forEach { reminder ->
-                Card(Modifier.fillMaxWidth()) {
+                AppCard {
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -90,6 +89,7 @@ fun RemindersPanel(dao: PlannerDao, context: android.content.Context) {
                                 "%02d:%02d".format(reminder.hour, reminder.minute),
                                 color = MaterialTheme.colorScheme.primary,
                                 style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
                             )
                         }
                         TextButton(onClick = { editing = reminder }) { Text("تغییر ساعت") }
@@ -138,10 +138,11 @@ fun RemindersPanel(dao: PlannerDao, context: android.content.Context) {
             is24Hour = true,
         )
         Dialog(onDismissRequest = { editing = null }) {
-            Card {
+            AppCard(containerColor = MaterialTheme.colorScheme.surface) {
                 Column(
                     Modifier.padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("ساعت یادآور «${reminder.label}»", fontWeight = FontWeight.Bold)
                     TimePicker(state = pickerState)
@@ -164,7 +165,7 @@ fun RemindersPanel(dao: PlannerDao, context: android.content.Context) {
                                 editing = null
                                 reload()
                             }
-                        }) { Text("ذخیره") }
+                        }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
                     }
                 }
             }

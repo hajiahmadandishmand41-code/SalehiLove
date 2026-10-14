@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Salehi Love</string>
-    <string name="tagline">Love, learning and planning</string>
+    <string name="app_name">SalehiLove ❤️</string>
+    <string name="tagline">Love • Learn • Grow</string>
     <string name="nav_home">Home</string>
-    <string name="nav_learn">Learn</string>
+    <string name="nav_learn">Vocabulary</string>
     <string name="nav_planner">Planner</string>
     <string name="nav_personal">Personal</string>
     <string name="nav_settings">Settings</string>

@@ -1,44 +1,40 @@
 package com.salehilove.feature.personal
-import android.graphics.BitmapFactory
 
+import android.graphics.BitmapFactory
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,13 +45,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.Album
 import com.salehilove.core.database.Photo
 import com.salehilove.core.database.dao.GalleryDao
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.ConfirmDialog
 import com.salehilove.core.designsystem.components.EmptyState
 import com.salehilove.core.designsystem.components.PersianTextField
@@ -107,9 +106,11 @@ fun GalleryScreen(
     onSetProfilePhoto: (String) -> Unit,
     backgroundPhotoPath: () -> String?,
     onSetBackground: (String) -> Unit,
+    albumId: Long? = null,
+    onOpenAlbum: ((Album) -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
-    var openAlbum by remember { mutableStateOf<Album?>(null) }
+    var internalAlbum by remember { mutableStateOf<Album?>(null) }
     var ui by remember { mutableStateOf(GalleryUi()) }
     var creatingAlbum by remember { mutableStateOf(false) }
     var deletingAlbum by remember { mutableStateOf<Album?>(null) }
@@ -120,19 +121,29 @@ fun GalleryScreen(
             runCatching {
                 withContext(Dispatchers.IO) {
                     val albums = dao.albums()
-                    albums.associate { it.id to dao.albumPhotoCount(it.id) } .let { albums to it }
+                    albums.associate { it.id to dao.albumPhotoCount(it.id) }.let { albums to it }
                 }
             }.onSuccess { (albums, counts) -> ui = GalleryUi(albums, counts) }
         }
     }
 
-    LaunchedEffect(Unit) { reload() }
+    LaunchedEffect(albumId) { reload() }
 
-    val album = openAlbum
-    if (album == null) {
+    BackHandler(enabled = albumId == null && internalAlbum != null) {
+        internalAlbum = null
+        reload()
+    }
+
+    val activeAlbum = if (albumId != null) ui.albums.find { it.id == albumId } else internalAlbum
+    if (activeAlbum == null) {
         Scaffold(
+            containerColor = Color.Transparent,
             floatingActionButton = {
-                FloatingActionButton(onClick = { creatingAlbum = true }) {
+                FloatingActionButton(
+                    onClick = { creatingAlbum = true },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
                     Icon(Icons.Filled.Add, "آلبوم جدید")
                 }
             },
@@ -141,35 +152,43 @@ fun GalleryScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Filled.PhotoLibrary, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.height(4.dp))
-                    Text("  گالری", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Spacer(Modifier.height(8.dp))
                 if (ui.albums.isEmpty()) {
-                    EmptyState("آلبومی نیست — با + آلبوم بساز و عکس‌ها را اضافه کن")
+                    EmptyState("آلبومی نیست — با دکمه + آلبوم بساز و عکس‌ها را اضافه کن")
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp),
+                    ) {
                         items(ui.albums, key = { it.id }) { a ->
-                            Card(onClick = { openAlbum = a }, modifier = Modifier.fillMaxWidth()) {
+                            AppCard(
+                                onClick = {
+                                    if (onOpenAlbum != null) onOpenAlbum(a)
+                                    else internalAlbum = a
+                                },
+                            ) {
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .padding(12.dp),
+                                        .padding(14.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(a.name, fontWeight = FontWeight.Bold)
+                                    Column(
+                                        Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
                                         Text(
-                                            "${ui.counts[a.id] ?: 0} عکس",
+                                            a.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                        Text(
+                                            "${PersianCalendar.toPersianDigits((ui.counts[a.id] ?: 0).toString())} عکس",
                                             style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                     }
                                     IconButton(onClick = { deletingAlbum = a }) {
@@ -188,7 +207,7 @@ fun GalleryScreen(
             var validation by remember { mutableStateOf<String?>(null) }
             AlertDialog(
                 onDismissRequest = { creatingAlbum = false },
-                title = { Text("آلبوم جدید") },
+                title = { Text("آلبوم جدید", fontWeight = FontWeight.Bold) },
                 text = {
                     PersianTextField("نام آلبوم", name, { name = it }, errorMessage = validation)
                 },
@@ -200,7 +219,7 @@ fun GalleryScreen(
                             creatingAlbum = false
                             reload()
                         }
-                    }) { Text("ساخت") }
+                    }) { Text("ساخت", fontWeight = FontWeight.Bold) }
                 },
                 dismissButton = { TextButton(onClick = { creatingAlbum = false }) { Text("انصراف") } },
             )
@@ -227,17 +246,15 @@ fun GalleryScreen(
         AlbumView(
             dao = dao,
             store = store,
-            album = album,
+            album = activeAlbum,
             isProfile = { profilePhotoPath() != null && it == profilePhotoPath() },
             onSetProfile = onSetProfilePhoto,
             isBackground = { backgroundPhotoPath() != null && it == backgroundPhotoPath() },
             onSetBackground = onSetBackground,
-            onBack = { openAlbum = null; reload() },
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AlbumView(
     dao: GalleryDao,
@@ -247,7 +264,6 @@ private fun AlbumView(
     onSetProfile: (String) -> Unit,
     isBackground: (String) -> Boolean,
     onSetBackground: (String) -> Unit,
-    onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var photos by remember { mutableStateOf<List<Photo>>(emptyList()) }
@@ -264,7 +280,6 @@ private fun AlbumView(
 
     LaunchedEffect(album.id) { reload() }
 
-    // SAF import via ContentResolver (works for any provider, not just files).
     val context = androidx.compose.ui.platform.LocalContext.current
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -283,16 +298,13 @@ private fun AlbumView(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(album.name) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") }
-                },
-            )
-        },
+        containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = { importLauncher.launch("image/*") }) {
+            FloatingActionButton(
+                onClick = { importLauncher.launch("image/*") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Icon(Icons.Filled.Add, "افزودن عکس")
             }
         },
@@ -301,16 +313,40 @@ private fun AlbumView(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            AppCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        album.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        "${PersianCalendar.toPersianDigits(photos.size.toString())} عکس",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                }
+            }
+
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (photos.isEmpty()) {
-                EmptyState("این آلبوم خالی است — با + عکس اضافه کن")
+                EmptyState("این آلبوم خالی است — با دکمه + عکس اضافه کن")
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    columns = GridCells.Fixed(2),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
                 ) {
                     items(photos, key = { it.id }) { photo ->
                         PhotoCell(
@@ -350,7 +386,7 @@ private fun AlbumView(
         var caption by remember(photo.id) { mutableStateOf(photo.caption) }
         AlertDialog(
             onDismissRequest = { captioning = null },
-            title = { Text("توضیح عکس") },
+            title = { Text("توضیح عکس", fontWeight = FontWeight.Bold) },
             text = { PersianTextField("توضیح", caption, { caption = it }) },
             confirmButton = {
                 TextButton(onClick = {
@@ -359,7 +395,7 @@ private fun AlbumView(
                         captioning = null
                         reload()
                     }
-                }) { Text("ذخیره") }
+                }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { captioning = null }) { Text("انصراف") } },
         )
@@ -376,67 +412,78 @@ private fun PhotoCell(
     onSetProfile: () -> Unit,
     onSetBackground: () -> Unit,
 ) {
-    var bitmap by remember(photo.filePath) {
-        mutableStateOf(BitmapFactory.decodeFile(photo.filePath))
+    val bitmap = remember(photo.filePath) {
+        BitmapFactory.decodeFile(photo.filePath)
     }
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f),
-    ) {
-        Box {
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap!!.asImageBitmap(),
-                    contentDescription = photo.caption.ifBlank { "عکس" },
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(8.dp)),
-                )
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) { Text("خطای بارگذاری") }
-            }
-            Column(
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(4.dp),
+    AppCard {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f),
             ) {
-                if (isProfile) {
-                    Icon(
-                        Icons.Filled.Person, "عکس پروفایل",
-                        tint = MaterialTheme.colorScheme.primary,
+                if (bitmap != null) {
+                    Image(
+                        bitmap = bitmap.asImageBitmap(),
+                        contentDescription = photo.caption.ifBlank { "عکس" },
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
                     )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("خطای بارگذاری") }
                 }
-                if (isBackground) {
-                    Icon(
-                        Icons.Filled.Wallpaper, "پس‌زمینه",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
+                Row(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (isProfile) {
+                        Icon(
+                            Icons.Filled.Person,
+                            "عکس پروفایل",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    if (isBackground) {
+                        Icon(
+                            Icons.Filled.Wallpaper,
+                            "پس‌زمینه",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
+            }
+            if (photo.caption.isNotBlank()) {
+                Text(
+                    photo.caption,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                )
             }
             Row(
                 Modifier
-                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(2.dp),
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconButton(onClick = onSetProfile, modifier = Modifier.padding(0.dp)) {
-                    Icon(Icons.Filled.Person, "تنظیم به‌عنوان عکس پروفایل", tint = MaterialTheme.colorScheme.onSurface)
+                IconButton(onClick = onSetProfile) {
+                    Icon(Icons.Filled.Person, "تنظیم به‌عنوان عکس پروفایل", tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onSetBackground, modifier = Modifier.padding(0.dp)) {
-                    Icon(Icons.Filled.Wallpaper, "تنظیم به‌عنوان پس‌زمینه", tint = MaterialTheme.colorScheme.onSurface)
+                IconButton(onClick = onSetBackground) {
+                    Icon(Icons.Filled.Wallpaper, "تنظیم به‌عنوان پس‌زمینه", tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onCaption, modifier = Modifier.padding(0.dp)) {
-                    Icon(Icons.Filled.PhotoLibrary, "توضیح", tint = MaterialTheme.colorScheme.onSurface)
+                IconButton(onClick = onCaption) {
+                    Icon(Icons.Filled.PhotoLibrary, "توضیح", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.padding(0.dp)) {
-                    Icon(Icons.Filled.Delete, "حذف", tint = MaterialTheme.colorScheme.onSurface)
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Filled.Delete, "حذف", tint = MaterialTheme.colorScheme.error)
                 }
             }
         }
