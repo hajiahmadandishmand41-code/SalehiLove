@@ -69,7 +69,7 @@ class DaoTest {
         assertEquals(listOf("فضیلت‌ها"), dao.topics())
 
         dao.update(
-            loaded.copy(
+            dao.getById(id)!!.copy(
                 english = "peaceful",
                 meaning = "صلح‌آمیز",
                 example = "A peaceful place.",
