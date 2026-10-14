@@ -39,7 +39,18 @@ class DaoTest {
     @Test
     fun `word crud and search`() {
         val dao = WordDao(db)
-        val id = dao.insert(Word(english = "peace", meaning = "آرامش", topic = "فضیلت‌ها", nextReviewAt = now))
+        val id = dao.insert(
+            Word(
+                english = "peace",
+                meaning = "آرامش",
+                example = "We value peace.",
+                exampleFa = "ما برای صلح ارزش قائلیم.",
+                phonetic = "piːs",
+                partOfSpeech = "noun",
+                topic = "فضیلت‌ها",
+                nextReviewAt = now,
+            ),
+        )
         assertTrue(id > 0)
 
         val loaded = dao.getById(id)!!
@@ -52,7 +63,31 @@ class DaoTest {
 
         assertEquals(listOf("peace"), dao.search("peace").map { it.english })
         assertEquals(listOf("peace"), dao.search("آرامش").map { it.english })
+        assertEquals(listOf("peace"), dao.search("value").map { it.english })
+        assertEquals(listOf("peace"), dao.search("piːs").map { it.english })
+        assertEquals(listOf("peace"), dao.search("فضیلت‌ها").map { it.english })
         assertEquals(listOf("فضیلت‌ها"), dao.topics())
+
+        dao.update(
+            loaded.copy(
+                english = "peaceful",
+                meaning = "صلح‌آمیز",
+                example = "A peaceful place.",
+                exampleFa = "یک جای آرام.",
+                phonetic = "ˈpiːsfəl",
+                partOfSpeech = "adjective",
+                topic = "صفات",
+            ),
+        )
+        val reopened = WordDao(db).getById(id)!!
+        assertEquals("A peaceful place.", reopened.example)
+        assertEquals("یک جای آرام.", reopened.exampleFa)
+        assertEquals("ˈpiːsfəl", reopened.phonetic)
+        assertEquals("adjective", reopened.partOfSpeech)
+        assertEquals("صفات", reopened.topic)
+        assertTrue(reopened.favorite)
+        assertEquals(listOf("peaceful"), dao.search("peaceful place").map { it.english })
+        assertEquals(listOf("peaceful"), dao.search("صفات").map { it.english })
 
         dao.delete(id)
         assertNull(dao.getById(id))
@@ -288,6 +323,34 @@ class DaoTest {
                 assertTrue("no summary in ${c.title}", c.examSummary.isNotBlank())
             }
         }
+        assertTrue(
+            "The Ghadir narration must not be labeled as Silsilat al-Dhahab",
+            books.flatMap { it.chapters }.any {
+                it.title == "حدیث غدیر" && it.arabicText.contains("مَنْ كُنْتُ مَوْلَاهُ")
+            },
+        )
+    }
+
+    @Test
+    fun `known Ghadir narration label is corrected without replacing content`() {
+        val dao = ReligiousDao(db)
+        val bookId = dao.insertBook(Book(title = "احادیث نبوی — گزیده"))
+        val arabic = "مَنْ كُنْتُ مَوْلَاهُ فَهَذَا عَلِيٌّ مَوْلَاهُ."
+        val chapterId = dao.insertChapter(
+            Chapter(
+                bookId = bookId,
+                title = "حدیث سلسلة‌الذهب",
+                arabicText = arabic,
+                explanation = "شرح موجود باید حفظ شود.",
+            ),
+        )
+
+        SeedInitializer.correctKnownContentLabels(db, SettingsDao(db))
+
+        val corrected = dao.chapterById(chapterId)!!
+        assertEquals("حدیث غدیر", corrected.title)
+        assertEquals(arabic, corrected.arabicText)
+        assertEquals("شرح موجود باید حفظ شود.", corrected.explanation)
     }
 
     @Test
