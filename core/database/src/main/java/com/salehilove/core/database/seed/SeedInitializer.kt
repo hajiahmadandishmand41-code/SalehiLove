@@ -11,12 +11,14 @@ object SeedInitializer {
 
     const val KEY_BOOKS_SEEDED = "seed_books_done"
     const val KEY_REMINDERS_SEEDED = "seed_reminders_done"
+    const val KEY_GADIR_LABEL_CORRECTED = "content_fix_gadir_hadith_v1"
 
     fun seedAll(db: RawDatabase, wordRepository: com.salehilove.core.database.repo.WordRepository, timeProvider: TimeProvider) {
         val settings = SettingsDao(db)
         val now = timeProvider.now()
         wordRepository.seedIfEmpty(SeedData.starterWords(now), settings)
         seedBooks(db, settings)
+        correctKnownContentLabels(db, settings)
         seedReminders(db, settings)
     }
 
@@ -36,6 +38,30 @@ object SeedInitializer {
             }
         }
         settings.putBoolean(KEY_BOOKS_SEEDED, true)
+    }
+
+    /**
+     * Corrects one known seed-data labeling error on existing installs without
+     * overwriting chapter text, translation, notes, or user-edited content.
+     */
+    internal fun correctKnownContentLabels(db: RawDatabase, settings: SettingsDao) {
+        if (settings.getBoolean(KEY_GADIR_LABEL_CORRECTED, false)) return
+        val dao = ReligiousDao(db)
+        db.transaction {
+            dao.books()
+                .filter { it.title == "احادیث نبوی — گزیده" }
+                .forEach { book ->
+                    dao.chaptersOf(book.id)
+                        .filter {
+                            it.title == "حدیث سلسلة‌الذهب" &&
+                                it.arabicText.startsWith("مَنْ كُنْتُ مَوْلَاهُ")
+                        }
+                        .forEach { chapter ->
+                            dao.updateChapter(chapter.copy(title = "حدیث غدیر"))
+                        }
+                }
+            settings.putBoolean(KEY_GADIR_LABEL_CORRECTED, true)
+        }
     }
 
     fun seedReminders(db: RawDatabase, settings: SettingsDao) {

@@ -189,7 +189,7 @@ fun WordsScreen(
                 onValueChange = { ui = ui.copy(query = it) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),
-                placeholder = { Text("جست‌وجو در واژه‌های انگلیسی و معنی فارسی…") },
+                placeholder = { Text("جست‌وجو در واژه، معنی، تلفظ، موضوع و مثال…") },
                 leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
                 singleLine = true,
             )

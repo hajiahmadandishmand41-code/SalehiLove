@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +51,7 @@ import com.salehilove.core.database.Task
 import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.SectionCard
 import com.salehilove.core.designsystem.components.StatColumn
+import com.salehilove.feature.personal.rememberPrivatePhotoState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,6 +60,7 @@ import java.time.LocalDate
 private data class DashboardUi(
     val dueWords: Int = 0,
     val totalWords: Int = 0,
+    val masteredWords: Int = 0,
     val todayTasks: List<Task> = emptyList(),
     val doneTasks: Int = 0,
     val recentNotes: List<Note> = emptyList(),
@@ -82,6 +85,7 @@ fun DashboardScreen(
 ) {
     val scope = rememberCoroutineScope()
     var ui by remember { mutableStateOf(DashboardUi()) }
+    val profilePhotoState = rememberPrivatePhotoState(container.profilePhotoPath(), maxDimension = 720)
 
     LaunchedEffect(Unit) {
         scope.launch {
@@ -93,6 +97,7 @@ fun DashboardScreen(
                     DashboardUi(
                         dueWords = container.wordRepo.dueCount(),
                         totalWords = container.wordRepo.totalCount(),
+                        masteredWords = container.wordRepo.masteredCount(),
                         todayTasks = tasks.filter { !it.done }.take(4),
                         doneTasks = progress.first,
                         recentNotes = container.notesDao.latest(3),
@@ -168,20 +173,32 @@ fun DashboardScreen(
                         )
                     }
                 }
-                Image(
-                    painter = painterResource(id = R.drawable.salehi_portrait),
-                    contentDescription = "عکس مدرس حاجی احمد صالحی",
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier
-                        .size(124.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .border(
-                            width = 1.5.dp,
-                            color = Color(0xFFD9B66C),
-                            shape = RoundedCornerShape(18.dp),
-                        ),
-                )
+                val portraitModifier = Modifier
+                    .size(124.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .border(
+                        width = 1.5.dp,
+                        color = Color(0xFFD9B66C),
+                        shape = RoundedCornerShape(18.dp),
+                    )
+                val personalBitmap = profilePhotoState.bitmap
+                if (personalBitmap != null) {
+                    Image(
+                        bitmap = personalBitmap.asImageBitmap(),
+                        contentDescription = "عکس پروفایل شخصی",
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter,
+                        modifier = portraitModifier,
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.salehi_portrait),
+                        contentDescription = "عکس مدرس حاجی احمد صالحی",
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter,
+                        modifier = portraitModifier,
+                    )
+                }
             }
         }
 
@@ -197,8 +214,8 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 StatColumn(PersianCalendar.toPersianDigits(ui.totalWords.toString()), "کل واژگان")
+                StatColumn(PersianCalendar.toPersianDigits(ui.masteredWords.toString()), "مسلط‌شده")
                 StatColumn(PersianCalendar.toPersianDigits(ui.dueWords.toString()), "آماده مرور")
-                StatColumn(PersianCalendar.toPersianDigits(ui.diaryCount.toString()), "خاطرات")
             }
             Row(
                 Modifier.fillMaxWidth(),

@@ -67,6 +67,7 @@ import com.salehilove.feature.personal.DiaryLockState
 import com.salehilove.feature.personal.DiaryScreen
 import com.salehilove.feature.personal.GalleryScreen
 import com.salehilove.feature.personal.NotesScreen
+import com.salehilove.feature.personal.rememberPrivatePhotoState
 import com.salehilove.feature.planner.PlannerScreen
 
 class MainActivity : ComponentActivity() {
@@ -280,27 +281,25 @@ private fun AppRoot(container: AppContainer) {
         },
     ) { padding ->
         val bgPath = container.backgroundPhotoPath()
+        val backgroundBitmap = rememberPrivatePhotoState(bgPath, maxDimension = 1200).bitmap
         Box(
             Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            if (bgPath != null) {
-                val bmp = remember(bgPath) { android.graphics.BitmapFactory.decodeFile(bgPath) }
-                if (bmp != null) {
-                    Image(
-                        bitmap = bmp.asImageBitmap(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                        alpha = 0.2f,
-                    )
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f)),
-                    )
-                }
+            if (bgPath != null && backgroundBitmap != null) {
+                Image(
+                    bitmap = backgroundBitmap.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                    alpha = 0.2f,
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.8f)),
+                )
             }
             Surface(color = Color.Transparent, modifier = Modifier.fillMaxSize()) {
                 Column(Modifier.fillMaxSize()) {

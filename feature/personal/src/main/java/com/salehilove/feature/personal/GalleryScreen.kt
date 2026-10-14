@@ -1,6 +1,5 @@
 package com.salehilove.feature.personal
 
-import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,6 +26,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -103,9 +103,9 @@ fun GalleryScreen(
     dao: GalleryDao,
     store: PhotoStore,
     profilePhotoPath: () -> String?,
-    onSetProfilePhoto: (String) -> Unit,
+    onSetProfilePhoto: (String?) -> Unit,
     backgroundPhotoPath: () -> String?,
-    onSetBackground: (String) -> Unit,
+    onSetBackground: (String?) -> Unit,
     albumId: Long? = null,
     onOpenAlbum: ((Album) -> Unit)? = null,
 ) {
@@ -123,7 +123,10 @@ fun GalleryScreen(
                     val albums = dao.albums()
                     albums.associate { it.id to dao.albumPhotoCount(it.id) }.let { albums to it }
                 }
-            }.onSuccess { (albums, counts) -> ui = GalleryUi(albums, counts) }
+            }.onSuccess { (albums, counts) ->
+                ui = GalleryUi(albums, counts)
+                error = null
+            }.onFailure { error = it.message ?: "بارگذاری گالری ناموفق بود" }
         }
     }
 
@@ -234,6 +237,8 @@ fun GalleryScreen(
                 onConfirm = {
                     scope.launch {
                         val paths = withContext(Dispatchers.IO) { dao.deleteAlbum(a.id) }
+                        if (profilePhotoPath()?.let { it in paths } == true) onSetProfilePhoto(null)
+                        if (backgroundPhotoPath()?.let { it in paths } == true) onSetBackground(null)
                         withContext(Dispatchers.IO) { paths.forEach { store.delete(it) } }
                         deletingAlbum = null
                         reload()
@@ -261,9 +266,9 @@ private fun AlbumView(
     store: PhotoStore,
     album: Album,
     isProfile: (String) -> Boolean,
-    onSetProfile: (String) -> Unit,
+    onSetProfile: (String?) -> Unit,
     isBackground: (String) -> Boolean,
-    onSetBackground: (String) -> Unit,
+    onSetBackground: (String?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var photos by remember { mutableStateOf<List<Photo>>(emptyList()) }
@@ -274,7 +279,11 @@ private fun AlbumView(
     fun reload() {
         scope.launch {
             runCatching { withContext(Dispatchers.IO) { dao.photosOf(album.id) } }
-                .onSuccess { photos = it }
+                .onSuccess {
+                    photos = it
+                    error = null
+                }
+                .onFailure { error = it.message ?: "بارگذاری عکس‌ها ناموفق بود" }
         }
     }
 
@@ -292,7 +301,8 @@ private fun AlbumView(
                     dao.addPhoto(album.id, path, "", System.currentTimeMillis())
                 }
             }
-            result.exceptionOrNull()?.let { error = it.message }
+            result.exceptionOrNull()?.let { error = it.message ?: "وارد کردن عکس ناموفق بود" }
+            if (result.isSuccess) error = null
             reload()
         }
     }
@@ -373,7 +383,11 @@ private fun AlbumView(
             onConfirm = {
                 scope.launch {
                     val path = withContext(Dispatchers.IO) { dao.deletePhoto(photo.id) }
-                    if (path != null) withContext(Dispatchers.IO) { store.delete(path) }
+                    if (path != null) {
+                        if (isProfile(path)) onSetProfile(null)
+                        if (isBackground(path)) onSetBackground(null)
+                        withContext(Dispatchers.IO) { store.delete(path) }
+                    }
                     deleting = null
                     reload()
                 }
@@ -412,9 +426,8 @@ private fun PhotoCell(
     onSetProfile: () -> Unit,
     onSetBackground: () -> Unit,
 ) {
-    val bitmap = remember(photo.filePath) {
-        BitmapFactory.decodeFile(photo.filePath)
-    }
+    val photoState = rememberPrivatePhotoState(photo.filePath, maxDimension = 512)
+    val bitmap = photoState.bitmap
     AppCard {
         Column {
             Box(
@@ -435,7 +448,13 @@ private fun PhotoCell(
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
-                    ) { Text("خطای بارگذاری") }
+                    ) {
+                        if (photoState.isLoaded) {
+                            Text("عکس در دسترس نیست")
+                        } else {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
                 Row(
                     Modifier

@@ -92,22 +92,26 @@ class AppContainer(context: Context) : ReminderDbProvider {
 
     // --- Appearance ---------------------------------------------------------
     var themeMode by mutableStateOf(settings.getString(SettingsKeys.THEME_MODE) ?: "system")
+    private var selectedProfilePhotoPath by mutableStateOf(settings.getString(SettingsKeys.PROFILE_PHOTO))
+    private var selectedBackgroundPhotoPath by mutableStateOf(settings.getString(SettingsKeys.BACKGROUND_PHOTO))
 
     fun applyThemeMode(mode: String) {
         themeMode = mode
         settings.putString(SettingsKeys.THEME_MODE, mode)
     }
 
-    fun profilePhotoPath(): String? = settings.getString(SettingsKeys.PROFILE_PHOTO)
+    fun profilePhotoPath(): String? = selectedProfilePhotoPath
 
     fun setProfilePhoto(path: String?) {
+        selectedProfilePhotoPath = path
         if (path == null) settings.remove(SettingsKeys.PROFILE_PHOTO)
         else settings.putString(SettingsKeys.PROFILE_PHOTO, path)
     }
 
-    fun backgroundPhotoPath(): String? = settings.getString(SettingsKeys.BACKGROUND_PHOTO)
+    fun backgroundPhotoPath(): String? = selectedBackgroundPhotoPath
 
     fun setBackgroundPhoto(path: String?) {
+        selectedBackgroundPhotoPath = path
         if (path == null) settings.remove(SettingsKeys.BACKGROUND_PHOTO)
         else settings.putString(SettingsKeys.BACKGROUND_PHOTO, path)
     }
