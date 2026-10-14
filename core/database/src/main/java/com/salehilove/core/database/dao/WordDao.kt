@@ -63,8 +63,15 @@ class WordDao(private val db: RawDatabase) {
             .map(Mappers::word)
 
     fun search(query: String, topic: String? = null, favoritesOnly: Boolean = false): List<Word> {
-        var sql = "SELECT $cols FROM words WHERE (english LIKE ? OR meaning LIKE ?)"
-        val args = mutableListOf<Any?>("%$query%", "%$query%")
+        var sql = """
+            SELECT $cols FROM words
+            WHERE (
+                english LIKE ? OR meaning LIKE ? OR phonetic LIKE ? OR
+                part_of_speech LIKE ? OR topic LIKE ? OR example LIKE ? OR example_fa LIKE ?
+            )
+        """.trimIndent()
+        val needle = "%$query%"
+        val args = mutableListOf<Any?>(needle, needle, needle, needle, needle, needle, needle)
         if (topic != null) {
             sql += " AND topic = ?"
             args.add(topic)
