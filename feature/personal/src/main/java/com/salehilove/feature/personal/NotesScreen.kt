@@ -3,25 +3,24 @@ package com.salehilove.feature.personal
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -41,14 +40,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.Note
 import com.salehilove.core.database.dao.NotesDao
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.ConfirmDialog
 import com.salehilove.core.designsystem.components.EmptyState
 import com.salehilove.core.designsystem.components.PersianTextField
+import com.salehilove.core.designsystem.components.Pill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -85,8 +87,13 @@ fun NotesScreen(dao: NotesDao) {
     LaunchedEffect(ui.query, ui.category) { reload() }
 
     Scaffold(
+        containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = { editor = Note(title = "", content = "") }) {
+            FloatingActionButton(
+                onClick = { editor = Note(title = "", content = "") },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
                 Icon(Icons.Filled.Add, "یادداشت جدید")
             }
         },
@@ -95,17 +102,19 @@ fun NotesScreen(dao: NotesDao) {
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             OutlinedTextField(
                 value = ui.query,
                 onValueChange = { ui = ui.copy(query = it) },
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
                 placeholder = { Text("جست‌وجو در عنوان، متن و برچسب‌ها…") },
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
                 singleLine = true,
             )
-            Spacer(Modifier.height(8.dp))
+
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -125,46 +134,68 @@ fun NotesScreen(dao: NotesDao) {
                     )
                 }
             }
-            Spacer(Modifier.height(8.dp))
+
             if (ui.notes.isEmpty()) {
-                EmptyState("یادداشتی نیست — با + یادداشت جدید بنویس")
+                EmptyState("یادداشتی نیست — با دکمه + یادداشت جدید بنویس")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
                     items(ui.notes, key = { it.id }) { note ->
-                        Card(Modifier.fillMaxWidth()) {
+                        AppCard(onClick = { editor = note }) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(Modifier.weight(1f)) {
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         if (note.pinned) {
                                             Icon(
-                                                Icons.Filled.PushPin, null,
+                                                Icons.Filled.PushPin,
+                                                contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(end = 4.dp),
+                                                modifier = Modifier.padding(end = 6.dp),
                                             )
                                         }
-                                        Text(note.title.ifBlank { "(بی‌عنوان)" }, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            note.title.ifBlank { "(بی‌عنوان)" },
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                        )
                                     }
                                     if (note.content.isNotBlank()) {
                                         Text(
-                                            note.content.take(80) + if (note.content.length > 80) "…" else "",
+                                            note.content.take(90) + if (note.content.length > 90) "…" else "",
                                             style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
-                                    if (note.tags.isNotEmpty()) {
-                                        Text(
-                                            note.tags.joinToString("، ") { "#$it" },
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary,
-                                        )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        if (note.category.isNotBlank()) {
+                                            Pill(note.category)
+                                        }
+                                        if (note.tags.isNotEmpty()) {
+                                            Text(
+                                                note.tags.joinToString("، ") { "#$it" },
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
                                     }
                                     Text(
                                         PersianCalendar.formatDateTime(note.updatedAt),
                                         style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                                 IconButton(onClick = {
@@ -176,9 +207,12 @@ fun NotesScreen(dao: NotesDao) {
                                     Icon(
                                         if (note.pinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                                         "سنجاق",
+                                        tint = if (note.pinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
-                                IconButton(onClick = { editor = note }) { Icon(Icons.Filled.Edit, "ویرایش") }
+                                IconButton(onClick = { editor = note }) {
+                                    Icon(Icons.Filled.Edit, "ویرایش", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 IconButton(onClick = { deleting = note }) {
                                     Icon(Icons.Filled.Delete, "حذف", tint = MaterialTheme.colorScheme.error)
                                 }
@@ -234,12 +268,11 @@ private fun NoteEditorDialog(
     var content by remember { mutableStateOf(initial.content) }
     var category by remember { mutableStateOf(initial.category) }
     var tags by remember { mutableStateOf(initial.tags.joinToString("، ")) }
-    var color by remember { mutableStateOf(initial.color) }
     var validation by remember { mutableStateOf<String?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial.id == 0L) "یادداشت جدید" else "ویرایش یادداشت") },
+        title = { Text(if (initial.id == 0L) "یادداشت جدید" else "ویرایش یادداشت", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -249,21 +282,6 @@ private fun NoteEditorDialog(
                 PersianTextField("متن", content, { content = it }, singleLine = false, minLines = 5)
                 PersianTextField("دسته‌بندی", category, { category = it })
                 PersianTextField("برچسب‌ها (با «،» جدا کن)", tags, { tags = it })
-                Text("رنگ کارت", style = MaterialTheme.typography.labelMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        "" to "پیش‌فرض",
-                        "green" to "سبز",
-                        "gold" to "طلایی",
-                        "cream" to "کرم",
-                    ).forEach { (value, label) ->
-                        FilterChip(
-                            selected = color == value,
-                            onClick = { color = value },
-                            label = { Text(label) },
-                        )
-                    }
-                }
                 if (validation != null) {
                     Text(validation!!, color = MaterialTheme.colorScheme.error)
                 }
@@ -282,12 +300,12 @@ private fun NoteEditorDialog(
                         content = content.trim(),
                         category = category.trim(),
                         tags = tags.split('،', ',').map { it.trim() }.filter { it.isNotBlank() },
-                        color = color,
+                        color = initial.color,
                         createdAt = if (initial.id == 0L) now else initial.createdAt,
                         updatedAt = now,
                     ),
                 )
-            }) { Text("ذخیره") }
+            }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
     )

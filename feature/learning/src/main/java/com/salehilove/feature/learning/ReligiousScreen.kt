@@ -2,6 +2,7 @@ package com.salehilove.feature.learning
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,23 +14,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,36 +38,43 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.Book
 import com.salehilove.core.database.Chapter
 import com.salehilove.core.database.dao.ReligiousDao
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.ConfirmDialog
 import com.salehilove.core.designsystem.components.EmptyState
 import com.salehilove.core.designsystem.components.PersianTextField
+import com.salehilove.core.designsystem.components.Pill
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private sealed interface RelView {
-    data object Books : RelView
-    data class Chapters(val book: Book) : RelView
-    data class Detail(val book: Book, val chapter: Chapter) : RelView
-}
-
 /**
  * Religious studies: books → chapters → reading view with Arabic text,
  * Persian translation, explanation, exam summary, key points and page number.
- * Chapters can be marked read/favourite; books and chapters are fully editable.
+ * UsesAppNav routes (`religious`, `religious/book/{id}`, `religious/chapter/{bookId}/{chapterId}`)
+ * when callbacks are provided so the single app TopAppBar and system Back
+ * preserve full navigation history without duplicate headers.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReligiousScreen(dao: ReligiousDao) {
+fun ReligiousScreen(
+    dao: ReligiousDao,
+    bookId: Long? = null,
+    chapterId: Long? = null,
+    onOpenBook: ((Book) -> Unit)? = null,
+    onOpenChapter: ((Book, Chapter) -> Unit)? = null,
+) {
     val scope = rememberCoroutineScope()
-    var view by remember { mutableStateOf<RelView>(RelView.Books) }
     var books by remember { mutableStateOf<List<Book>>(emptyList()) }
     var chapters by remember { mutableStateOf<List<Chapter>>(emptyList()) }
+    var internalBook by remember { mutableStateOf<Book?>(null) }
+    var internalChapter by remember { mutableStateOf<Chapter?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun loadBooks() {
@@ -79,24 +85,100 @@ fun ReligiousScreen(dao: ReligiousDao) {
         }
     }
 
-    fun loadChapters(book: Book) {
+    fun loadChapters(targetBookId: Long) {
         scope.launch {
-            runCatching { withContext(Dispatchers.IO) { dao.chaptersOf(book.id) } }
+            runCatching { withContext(Dispatchers.IO) { dao.chaptersOf(targetBookId) } }
                 .onSuccess { chapters = it }
         }
     }
 
-    LaunchedEffect(Unit) { loadBooks() }
+    LaunchedEffect(bookId, chapterId) {
+        loadBooks()
+        val activeBookId = bookId ?: internalBook?.id
+        if (activeBookId != null) {
+            loadChapters(activeBookId)
+        }
+    }
 
-    when (val v = view) {
-        is RelView.Books -> BooksList(
+    val activeBook = if (bookId != null) books.find { it.id == bookId } else internalBook
+    val activeChapter = if (chapterId != null) chapters.find { it.id == chapterId } else internalChapter
+
+    when {
+        activeBook != null && activeChapter != null -> ChapterDetail(
+            book = activeBook,
+            chapter = activeChapter,
+            onToggleRead = {
+                scope.launch {
+                    withContext(Dispatchers.IO) { dao.setChapterRead(activeChapter.id, !activeChapter.isRead) }
+                    loadChapters(activeBook.id)
+                }
+            },
+            onToggleFavorite = {
+                scope.launch {
+                    withContext(Dispatchers.IO) { dao.setChapterFavorite(activeChapter.id, !activeChapter.favorite) }
+                    loadChapters(activeBook.id)
+                }
+            },
+        )
+
+        activeBook != null -> ChaptersList(
+            book = activeBook,
+            chapters = chapters,
+            onOpen = { ch ->
+                if (onOpenChapter != null) onOpenChapter(activeBook, ch)
+                else internalChapter = ch
+            },
+            onToggleRead = { chapter ->
+                scope.launch {
+                    withContext(Dispatchers.IO) { dao.setChapterRead(chapter.id, !chapter.isRead) }
+                    loadChapters(activeBook.id)
+                }
+            },
+            onToggleFavorite = { chapter ->
+                scope.launch {
+                    withContext(Dispatchers.IO) { dao.setChapterFavorite(chapter.id, !chapter.favorite) }
+                    loadChapters(activeBook.id)
+                }
+            },
+            onAdd = { chapter ->
+                scope.launch {
+                    withContext(Dispatchers.IO) {
+                        runCatching { dao.insertChapter(chapter) }
+                    }.exceptionOrNull()?.let { error = it.message }
+                    loadChapters(activeBook.id)
+                }
+            },
+            onDelete = { chapter ->
+                scope.launch {
+                    withContext(Dispatchers.IO) { dao.deleteChapter(chapter.id) }
+                    loadChapters(activeBook.id)
+                }
+            },
+            onEdit = { updated ->
+                scope.launch {
+                    withContext(Dispatchers.IO) { runCatching { dao.updateChapter(updated) } }
+                    loadChapters(activeBook.id)
+                }
+            },
+        )
+
+        else -> BooksList(
             books = books,
             error = error,
-            onOpen = { book -> view = RelView.Chapters(book).also { loadChapters(book) } },
+            onOpen = { book ->
+                if (onOpenBook != null) onOpenBook(book)
+                else {
+                    internalBook = book
+                    loadChapters(book.id)
+                }
+            },
             onAdd = { title, author, description ->
                 scope.launch {
-                    runCatching { withContext(Dispatchers.IO) { dao.insertBook(Book(title = title, author = author, description = description)) } }
-                        .onFailure { error = it.message }
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            dao.insertBook(Book(title = title, author = author, description = description))
+                        }
+                    }.onFailure { error = it.message }
                     loadBooks()
                 }
             },
@@ -107,71 +189,9 @@ fun ReligiousScreen(dao: ReligiousDao) {
                 }
             },
         )
-
-        is RelView.Chapters -> ChaptersList(
-            book = v.book,
-            chapters = chapters,
-            onBack = { view = RelView.Books },
-            onOpen = { view = RelView.Detail(v.book, it) },
-            onToggleRead = { chapter ->
-                scope.launch {
-                    withContext(Dispatchers.IO) { dao.setChapterRead(chapter.id, !chapter.isRead) }
-                    loadChapters(v.book)
-                }
-            },
-            onToggleFavorite = { chapter ->
-                scope.launch {
-                    withContext(Dispatchers.IO) { dao.setChapterFavorite(chapter.id, !chapter.favorite) }
-                    loadChapters(v.book)
-                }
-            },
-            onAdd = { chapter ->
-                scope.launch {
-                    withContext(Dispatchers.IO) {
-                        runCatching { dao.insertChapter(chapter) }
-                    }.exceptionOrNull()?.let { error = it.message }
-                    loadChapters(v.book)
-                }
-            },
-            onDelete = { chapter ->
-                scope.launch {
-                    withContext(Dispatchers.IO) { dao.deleteChapter(chapter.id) }
-                    loadChapters(v.book)
-                }
-            },
-            onEdit = { updated ->
-                scope.launch {
-                    withContext(Dispatchers.IO) { runCatching { dao.updateChapter(updated) } }
-                    loadChapters(v.book)
-                }
-            },
-        )
-
-        is RelView.Detail -> ChapterDetail(
-            book = v.book,
-            chapter = v.chapter,
-            onBack = { loadChapters(v.book); view = RelView.Chapters(v.book) },
-            onToggleRead = {
-                scope.launch {
-                    withContext(Dispatchers.IO) { dao.setChapterRead(v.chapter.id, !v.chapter.isRead) }
-                    val fresh = withContext(Dispatchers.IO) { dao.chaptersOf(v.book.id) }
-                    chapters = fresh
-                    fresh.find { it.id == v.chapter.id }?.let { view = RelView.Detail(v.book, it) }
-                }
-            },
-            onToggleFavorite = {
-                scope.launch {
-                    withContext(Dispatchers.IO) { dao.setChapterFavorite(v.chapter.id, !v.chapter.favorite) }
-                    val fresh = withContext(Dispatchers.IO) { dao.chaptersOf(v.book.id) }
-                    chapters = fresh
-                    fresh.find { it.id == v.chapter.id }?.let { view = RelView.Detail(v.book, it) }
-                }
-            },
-        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BooksList(
     books: List<Book>,
@@ -184,31 +204,62 @@ private fun BooksList(
     var deleting by remember { mutableStateOf<Book?>(null) }
 
     Scaffold(
-        floatingActionButton = { FloatingActionButton(onClick = { adding = true }) { Icon(Icons.Filled.Add, "افزودن کتاب") } },
+        containerColor = Color.Transparent,
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { adding = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Filled.Add, "افزودن کتاب")
+            }
+        },
     ) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (books.isEmpty()) {
-                EmptyState("کتابی ثبت نشده — با + کتاب اول را اضافه کن")
+                EmptyState("کتابی ثبت نشده — با دکمه + کتاب اول را اضافه کن")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                ) {
                     items(books, key = { it.id }) { book ->
-                        Card(onClick = { onOpen(book) }, modifier = Modifier.fillMaxWidth()) {
+                        AppCard(onClick = { onOpen(book) }) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(book.title, fontWeight = FontWeight.Bold)
-                                    if (book.author.isNotBlank()) {
-                                        Text(book.author, style = MaterialTheme.typography.bodySmall)
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        book.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    if (book.author.isNotBlank() && book.author != "—") {
+                                        Text(
+                                            book.author,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                        )
+                                    }
+                                    if (book.description.isNotBlank()) {
+                                        Text(
+                                            book.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
                                 IconButton(onClick = { deleting = book }) {
@@ -229,7 +280,7 @@ private fun BooksList(
         var validation by remember { mutableStateOf<String?>(null) }
         AlertDialog(
             onDismissRequest = { adding = false },
-            title = { Text("کتاب جدید") },
+            title = { Text("کتاب جدید", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PersianTextField("عنوان کتاب", title, { title = it }, errorMessage = validation)
@@ -241,7 +292,7 @@ private fun BooksList(
                 TextButton(onClick = {
                     if (title.isBlank()) { validation = "عنوان الزامی است"; return@TextButton }
                     onAdd(title.trim(), author.trim(), description.trim()); adding = false
-                }) { Text("ذخیره") }
+                }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { adding = false }) { Text("انصراف") } },
         )
@@ -259,12 +310,10 @@ private fun BooksList(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChaptersList(
     book: Book,
     chapters: List<Chapter>,
-    onBack: () -> Unit,
     onOpen: (Chapter) -> Unit,
     onToggleRead: (Chapter) -> Unit,
     onToggleFavorite: (Chapter) -> Unit,
@@ -277,43 +326,77 @@ private fun ChaptersList(
     var deleting by remember { mutableStateOf<Chapter?>(null) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(book.title) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") }
-                },
-            )
-        },
+        containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = { adding = true }) { Icon(Icons.Filled.Add, "افزودن فصل") }
+            FloatingActionButton(
+                onClick = { adding = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Filled.Add, "افزودن فصل")
+            }
         },
     ) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            AppCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        book.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    if (book.description.isNotBlank()) {
+                        Text(
+                            book.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
+                }
+            }
+
             if (chapters.isEmpty()) {
-                EmptyState("فصلی ثبت نشده — با + فصل جدید اضافه کن")
+                EmptyState("فصلی ثبت نشده — با دکمه + فصل جدید اضافه کن")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                ) {
                     items(chapters, key = { it.id }) { chapter ->
-                        Card(onClick = { onOpen(chapter) }, modifier = Modifier.fillMaxWidth()) {
+                        AppCard(onClick = { onOpen(chapter) }) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(Modifier.weight(1f)) {
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
                                     Text(
-                                        "${chapter.position}. ${chapter.title}",
+                                        "${PersianCalendar.toPersianDigits((chapter.position + 1).toString())}. ${chapter.title}",
+                                        style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
                                     )
                                     if (chapter.pageNumber != null) {
-                                        Text("صفحه ${chapter.pageNumber}", style = MaterialTheme.typography.labelSmall)
+                                        Text(
+                                            "صفحه ${PersianCalendar.toPersianDigits(chapter.pageNumber.toString())}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
                                     }
                                 }
                                 IconButton(onClick = { onToggleFavorite(chapter) }) {
@@ -323,10 +406,16 @@ private fun ChaptersList(
                                         tint = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                                IconButton(onClick = { onToggleRead(chapter) }) {
-                                    Text(if (chapter.isRead) "خوانده✅" else "خوانده", style = MaterialTheme.typography.labelSmall)
+                                TextButton(onClick = { onToggleRead(chapter) }) {
+                                    Text(
+                                        if (chapter.isRead) "خوانده‌شده" else "ثبت مطالعه",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = if (chapter.isRead) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
-                                IconButton(onClick = { editing = chapter }) { Icon(Icons.Filled.Edit, "ویرایش") }
+                                IconButton(onClick = { editing = chapter }) {
+                                    Icon(Icons.Filled.Edit, "ویرایش", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 IconButton(onClick = { deleting = chapter }) {
                                     Icon(Icons.Filled.Delete, "حذف", tint = MaterialTheme.colorScheme.error)
                                 }
@@ -340,7 +429,7 @@ private fun ChaptersList(
 
     if (adding || editing != null) {
         ChapterEditorDialog(
-            initial = editing ?: Chapter(bookId = book.id, position = chapters.size + 1, title = ""),
+            initial = editing ?: Chapter(bookId = book.id, position = chapters.size, title = ""),
             onDismiss = { adding = false; editing = null },
             onSave = { chapter ->
                 if (chapter.id == 0L) onAdd(chapter) else onEdit(chapter)
@@ -379,7 +468,7 @@ private fun ChapterEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial.id == 0L) "فصل جدید" else "ویرایش فصل") },
+        title = { Text(if (initial.id == 0L) "فصل جدید" else "ویرایش فصل", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -398,7 +487,7 @@ private fun ChapterEditorDialog(
         confirmButton = {
             TextButton(onClick = {
                 if (title.isBlank()) { validation = "عنوان الزامی است"; return@TextButton }
-                val pos = position.trim().toIntOrNull() ?: (initial.position)
+                val pos = position.trim().toIntOrNull() ?: initial.position
                 onSave(
                     initial.copy(
                         title = title.trim(),
@@ -411,104 +500,164 @@ private fun ChapterEditorDialog(
                         pageNumber = page.trim().toIntOrNull(),
                     ),
                 )
-            }) { Text("ذخیره") }
+            }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChapterDetail(
     book: Book,
     chapter: Chapter,
-    onBack: () -> Unit,
     onToggleRead: () -> Unit,
     onToggleFavorite: () -> Unit,
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(chapter.title) },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") } },
-                actions = {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AppCard(containerColor = MaterialTheme.colorScheme.primaryContainer) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    book.title,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Text(
+                    chapter.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    chapter.pageNumber?.let {
+                        Pill("صفحه ${PersianCalendar.toPersianDigits(it.toString())}")
+                    }
+                    Spacer(Modifier.weight(1f))
                     IconButton(onClick = onToggleFavorite) {
                         Icon(
                             if (chapter.favorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             "منتخب",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
-                    TextButton(onClick = onToggleRead) {
-                        Text(if (chapter.isRead) "خوانده شد ✅" else "علامت خوانده‌شده")
+                    OutlinedButton(onClick = onToggleRead) {
+                        Text(if (chapter.isRead) "خوانده شد" else "ثبت به‌عنوان خوانده‌شده")
                     }
-                },
-            )
-        },
-    ) { padding ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-        ) {
-            Text(
-                "${book.title} — فصل ${chapter.position}",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            chapter.pageNumber?.let {
-                Spacer(Modifier.height(4.dp))
-                Text("صفحه $it", style = MaterialTheme.typography.labelMedium)
+                }
             }
-            if (chapter.arabicText.isNotBlank()) {
-                Spacer(Modifier.height(16.dp))
-                Text("متن عربی", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Card(Modifier.fillMaxWidth()) {
+        }
+
+        if (chapter.arabicText.isNotBlank()) {
+            AppCard {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        "متن عربی",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                     Text(
                         chapter.arabicText,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
             }
-            if (chapter.translation.isNotBlank()) {
-                Spacer(Modifier.height(16.dp))
-                Text("ترجمه", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(chapter.translation)
+        }
+
+        if (chapter.translation.isNotBlank()) {
+            AppCard {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        "ترجمه فارسی",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(chapter.translation, style = MaterialTheme.typography.bodyMedium)
+                }
             }
-            if (chapter.explanation.isNotBlank()) {
-                Spacer(Modifier.height(16.dp))
-                Text("توضیحات", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(chapter.explanation)
+        }
+
+        if (chapter.explanation.isNotBlank()) {
+            AppCard {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        "توضیحات",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(chapter.explanation, style = MaterialTheme.typography.bodyMedium)
+                }
             }
-            if (chapter.examSummary.isNotBlank()) {
-                Spacer(Modifier.height(16.dp))
-                Text("خلاصه امتحان", fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(chapter.examSummary, color = MaterialTheme.colorScheme.primary)
-            }
-            if (chapter.keyPoints.isNotEmpty()) {
-                Spacer(Modifier.height(16.dp))
-                Text("نکات کلیدی", fontWeight = FontWeight.Bold)
-                chapter.keyPoints.forEach { point ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                    ) {
-                        Text("• ", color = MaterialTheme.colorScheme.primary)
-                        Text(point)
+        }
+
+        if (chapter.examSummary.isNotBlank() || chapter.keyPoints.isNotEmpty()) {
+            AppCard {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (chapter.examSummary.isNotBlank()) {
+                        Text(
+                            "خلاصه امتحانی",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(chapter.examSummary, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (chapter.keyPoints.isNotEmpty()) {
+                        Text(
+                            "نکات کلیدی",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        chapter.keyPoints.forEach { point ->
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Text("•", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text(point, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(24.dp))
         }
+        Spacer(Modifier.height(16.dp))
     }
 }

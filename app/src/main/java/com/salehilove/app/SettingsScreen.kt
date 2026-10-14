@@ -13,14 +13,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
@@ -36,9 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.salehilove.core.designsystem.components.PersianTextField
 import com.salehilove.core.designsystem.components.PinField
-import com.salehilove.core.designsystem.theme.ThemeMode
+import com.salehilove.core.designsystem.components.SectionCard
 
 /**
  * Settings: theme, diary lock (PIN change/remove), notification permission,
@@ -61,111 +60,119 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("تنظیمات", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Palette, null, tint = MaterialTheme.colorScheme.primary)
-                    Text("  ظاهر", fontWeight = FontWeight.Bold)
-                }
-                Text("حالت نمایش", style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = container.themeMode == "light",
-                        onClick = { container.applyThemeMode("light") },
-                        label = { Text("روشن") },
-                    )
-                    FilterChip(
-                        selected = container.themeMode == "dark",
-                        onClick = { container.applyThemeMode("dark") },
-                        label = { Text("تاریک") },
-                    )
-                    FilterChip(
-                        selected = container.themeMode == "system",
-                        onClick = { container.applyThemeMode("system") },
-                        label = { Text("سیستم") },
-                    )
-                }
-                if (container.backgroundPhotoPath() != null) {
-                    OutlinedButton(onClick = { container.setBackgroundPhoto(null); message = "پس‌زمینه سفارشی حذف شد" }) {
-                        Text("حذف پس‌زمینه سفارشی")
-                    }
+        SectionCard(
+            title = "ظاهر و حالت نمایش",
+            subtitle = "پوسته طلایی هماهنگ در حالت روشن و تاریک",
+            icon = Icons.Filled.Palette,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = container.themeMode == "light",
+                    onClick = { container.applyThemeMode("light") },
+                    label = { Text("روشن") },
+                )
+                FilterChip(
+                    selected = container.themeMode == "dark",
+                    onClick = { container.applyThemeMode("dark") },
+                    label = { Text("تاریک") },
+                )
+                FilterChip(
+                    selected = container.themeMode == "system",
+                    onClick = { container.applyThemeMode("system") },
+                    label = { Text("هماهنگ با سیستم") },
+                )
+            }
+            if (container.backgroundPhotoPath() != null) {
+                OutlinedButton(
+                    onClick = {
+                        container.setBackgroundPhoto(null)
+                        message = "پس‌زمینه سفارشی حذف شد"
+                    },
+                ) {
+                    Text("حذف پس‌زمینه سفارشی")
                 }
             }
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Lock, null, tint = MaterialTheme.colorScheme.primary)
-                    Text("  قفل دفترچه خاطرات", fontWeight = FontWeight.Bold)
+        SectionCard(
+            title = "قفل دفترچه خاطرات",
+            subtitle = if (container.hasDiaryPin()) "رمز عبور اختصاصی فعال است" else "رمزی تنظیم نشده است",
+            icon = Icons.Filled.Lock,
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (container.hasDiaryPin()) {
+                    Button(onClick = { pinDialog = "change" }) { Text("تغییر رمز") }
+                    OutlinedButton(onClick = { pinDialog = "remove" }) { Text("حذف رمز") }
+                } else {
+                    Button(onClick = { pinDialog = "set" }) { Text("تعیین رمز") }
                 }
-                Text(
-                    if (container.hasDiaryPin()) "رمز عبور فعال است." else "رمزی تنظیم نشده — دفترچه با قفل دستگاه باز می‌شود.",
+            }
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("بازکردن سریع با اثر انگشت / چهره", Modifier.weight(1f))
+                Switch(
+                    checked = biometricEnabled,
+                    onCheckedChange = { enabled ->
+                        biometricEnabled = enabled
+                        container.settings.putBoolean(SettingsKeys.DIARY_BIOMETRIC, enabled)
+                    },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (container.hasDiaryPin()) {
-                        Button(onClick = { pinDialog = "change" }) { Text("تغییر رمز") }
-                        OutlinedButton(onClick = { pinDialog = "remove" }) { Text("حذف رمز") }
-                    } else {
-                        Button(onClick = { pinDialog = "set" }) { Text("تعیین رمز") }
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("بازکردن سریع با اثر انگشت/چهره", Modifier.weight(1f))
-                    Switch(
-                        checked = biometricEnabled,
-                        onCheckedChange = { enabled ->
-                            biometricEnabled = enabled
-                            container.settings.putBoolean(SettingsKeys.DIARY_BIOMETRIC, enabled)
-                        },
-                    )
-                }
             }
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("پشتیبان‌گیری", fontWeight = FontWeight.Bold)
-                Text(
-                    "خروجی رمزنگاری‌شده از همه داده‌ها و بازیابی روی هر دستگاهی.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Button(onClick = openBackup) { Text("پشتیبان‌گیری و بازیابی") }
+        SectionCard(
+            title = "پشتیبان‌گیری و بازیابی",
+            subtitle = "خروجی رمزنگاری‌شده از همه داده‌ها و بازیابی روی هر دستگاهی",
+            icon = Icons.Filled.Backup,
+            onClick = openBackup,
+        ) {
+            Button(onClick = openBackup, modifier = Modifier.fillMaxWidth()) {
+                Text("مدیریت پشتیبان‌گیری و بازیابی")
             }
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("مجوز یادآورها", fontWeight = FontWeight.Bold)
-                Text(
-                    "برای نمایش یادآورها، اعلان‌های برنامه باید روشن باشند.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                OutlinedButton(onClick = {
+        SectionCard(
+            title = "اعلان‌ها و یادآورها",
+            subtitle = "برای نمایش به‌موقع یادآورها، اعلان‌های برنامه را فعال نگه دارید",
+            icon = Icons.Filled.Notifications,
+        ) {
+            OutlinedButton(
+                onClick = {
                     runCatching {
                         context.startActivity(
                             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName),
                         )
                     }
-                }) { Text("تنظیمات اعلان‌ها") }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("تنظیمات اعلان‌های دستگاه")
             }
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp)) {
-                Text("درباره SalehiLove ❤️", fontWeight = FontWeight.Bold)
-                Text(
-                    "نسخه ۱٫۰ — ساخته‌شده با ❤️\nهمه داده‌ها فقط روی همین گوشی ذخیره می‌شوند.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
+        SectionCard(
+            title = "درباره SalehiLove ❤️",
+            subtitle = "نسخه ۱٫۰ — ساخته‌شده با ❤️ برای یادگیری، برنامه‌ریزی و رشد روزانه",
+            icon = Icons.Filled.Favorite,
+        ) {
+            Text(
+                "همه داده‌ها به‌صورت کاملاً آفلاین و امن روی همین دستگاه ذخیره می‌شوند.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
-        message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-        Spacer(Modifier.height(24.dp))
+        message?.let {
+            Text(
+                it,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
     }
 
     pinDialog?.let { mode ->
@@ -183,6 +190,7 @@ fun SettingsScreen(
                         "change" -> "تغییر رمز دفترچه"
                         else -> "حذف رمز دفترچه"
                     },
+                    fontWeight = FontWeight.Bold,
                 )
             },
             text = {
@@ -194,7 +202,7 @@ fun SettingsScreen(
                         PinField("رمز جدید (۴ تا ۸ رقم)", pin, { pin = it; error = null }, errorMessage = error)
                         PinField("تکرار رمز جدید", confirm, { confirm = it; error = null }, errorMessage = error)
                     } else {
-                        Text("با حذف رمز، دفترچه خاطرات فقط با قفل دستگاه (اثر انگشت/چهره) باز می‌شود.")
+                        Text("با حذف رمز، دفترچه خاطرات بدون رمز عبور باز می‌شود.")
                     }
                 }
             },
@@ -226,7 +234,7 @@ fun SettingsScreen(
                     } catch (e: IllegalArgumentException) {
                         error = e.message
                     }
-                }) { Text("تأیید") }
+                }) { Text("تأیید", fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { pinDialog = null }) { Text("انصراف") } },
         )

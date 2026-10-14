@@ -2,8 +2,8 @@ package com.salehilove.core.designsystem.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
 
 /**
  * Labelled text field used across all editors. RTL-friendly (the whole app is
@@ -29,6 +30,7 @@ fun PersianTextField(
     visualTransformation: VisualTransformation = VisualTransformation.None,
     supportingText: String? = null,
 ) {
+    val msg = errorMessage ?: supportingText
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = value,
@@ -36,13 +38,15 @@ fun PersianTextField(
             label = { Text(label) },
             singleLine = singleLine,
             minLines = minLines,
+            shape = RoundedCornerShape(12.dp),
             isError = errorMessage != null,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             visualTransformation = visualTransformation,
             modifier = Modifier.fillMaxWidth(),
-            supportingText = {
-                val msg = errorMessage ?: supportingText
-                if (msg != null) Text(msg)
+            supportingText = if (msg != null) {
+                { Text(msg) }
+            } else {
+                null
             },
         )
     }

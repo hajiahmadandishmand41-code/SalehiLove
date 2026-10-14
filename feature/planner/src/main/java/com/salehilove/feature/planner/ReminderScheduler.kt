@@ -128,7 +128,7 @@ class ReminderReceiver : BroadcastReceiver() {
         "morning" -> "صبح بخیر! برنامه امروز را ببین."
         "noon" -> "زمان مرور نیم‌روز — چند واژه مرور کن."
         "night" -> "شب بخیر! خاطرات امروز را بنویس و مرور کن."
-        else -> "یادآور صالحی‌لاو"
+        else -> "یادآور SalehiLove ❤️"
     }
 }
 

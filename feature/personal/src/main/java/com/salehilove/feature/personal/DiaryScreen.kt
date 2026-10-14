@@ -2,15 +2,18 @@ package com.salehilove.feature.personal
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -19,7 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -40,14 +43,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.repo.DiaryRepository
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.ConfirmDialog
 import com.salehilove.core.designsystem.components.EmptyState
 import com.salehilove.core.designsystem.components.PersianTextField
@@ -96,7 +102,6 @@ fun DiaryScreen(
     biometric: BiometricHelper,
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     // Auto-lock when the app leaves the foreground.
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -146,66 +151,92 @@ private fun DiaryGate(
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        // Offer biometric right away when there's no PIN yet or as a shortcut.
         if (biometricAvailable && !hasPin) onBiometric()
     }
 
     Column(
         Modifier
             .fillMaxSize()
-            .padding(24.dp)
+            .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            Icons.Filled.Lock, null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.height(72.dp),
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("دفترچه خاطرات خصوصی", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.height(8.dp))
-        Text(
-            "این بخش با رمزنگاری واقعی (AES-GCM) محافظت می‌شود.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        Spacer(Modifier.height(24.dp))
+        AppCard {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(56.dp),
+                )
+                Text(
+                    "دفترچه خاطرات خصوصی",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "این بخش با رمزنگاری واقعی (AES-256-GCM) محافظت می‌شود.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
 
-        if (hasPin) {
-            PinField(
-                label = "رمز عبور دفترچه",
-                value = pin,
-                onValueChange = { pin = it; error = null },
-                errorMessage = error,
-            )
-            Spacer(Modifier.height(12.dp))
-            TextButton(onClick = {
-                if (pin.length < 4) {
-                    error = "رمز عبور حداقل ۴ رقم است"
-                    return@TextButton
-                }
-                if (onPin(pin)) {
-                    pin = ""
-                    attempts = 0
-                    onUnlocked()
+                if (hasPin) {
+                    PinField(
+                        label = "رمز عبور دفترچه",
+                        value = pin,
+                        onValueChange = { pin = it; error = null },
+                        errorMessage = error,
+                    )
+                    Button(
+                        onClick = {
+                            if (pin.length < 4) {
+                                error = "رمز عبور حداقل ۴ رقم است"
+                                return@Button
+                            }
+                            if (onPin(pin)) {
+                                pin = ""
+                                attempts = 0
+                                onUnlocked()
+                            } else {
+                                attempts++
+                                error = "رمز عبور نادرست است (تلاش ${PersianCalendar.toPersianDigits(attempts.toString())})"
+                                pin = ""
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("بازکردن") }
+                    if (biometricAvailable) {
+                        OutlinedButton(onClick = onBiometric, modifier = Modifier.fillMaxWidth()) {
+                            Text("بازکردن با اثر انگشت / چهره")
+                        }
+                    }
                 } else {
-                    attempts++
-                    error = "رمز عبور نادرست است (تلاش ${PersianCalendar.toPersianDigits(attempts.toString())})"
-                    pin = ""
+                    Text(
+                        "رمزی برای دفترچه تنظیم نشده است. از بخش تنظیمات می‌توانید یک رمز عبور اختصاصی تعیین کنید.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                    Button(
+                        onClick = onUnlocked,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("ورود به دفترچه خاطرات")
+                    }
+                    if (biometricAvailable) {
+                        OutlinedButton(onClick = onBiometric, modifier = Modifier.fillMaxWidth()) {
+                            Text("تأیید با اثر انگشت / چهره")
+                        }
+                    }
                 }
-            }) { Text("بازکردن") }
-            if (biometricAvailable) {
-                OutlinedButton(onClick = onBiometric) { Text("بازکردن با اثر انگشت / چهره") }
-            }
-        } else {
-            Text(
-                "هنوز رمزی برای دفترچه تنظیم نشده.\nاز تنظیمات یک رمز عبور جداگانه بساز.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (biometricAvailable) {
-                Spacer(Modifier.height(12.dp))
-                OutlinedButton(onClick = onBiometric) { Text("بازکردن با قفل دستگاه (اثر انگشت/چهره)") }
             }
         }
     }
@@ -242,62 +273,83 @@ private fun DiaryBody(
     LaunchedEffect(ui.query) { reload() }
 
     Scaffold(
-        topBar = {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("دفترچه خاطرات", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                TextButton(onClick = onLock) { Text("قفل کردن") }
-            }
-        },
+        containerColor = Color.Transparent,
         floatingActionButton = {
-            FloatingActionButton(onClick = { creating = true }) { Icon(Icons.Filled.Add, "خاطره جدید") }
+            FloatingActionButton(
+                onClick = { creating = true },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Icon(Icons.Filled.Add, "خاطره جدید")
+            }
         },
     ) { padding ->
         Column(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(
-                value = ui.query,
-                onValueChange = { ui = ui.copy(query = it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("جست‌وجو در عنوان خاطرات…") },
-                leadingIcon = { Icon(Icons.Filled.Search, null) },
-                singleLine = true,
-            )
-            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = ui.query,
+                    onValueChange = { ui = ui.copy(query = it) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(14.dp),
+                    placeholder = { Text("جست‌وجو در عنوان خاطرات…") },
+                    leadingIcon = { Icon(Icons.Filled.Search, null) },
+                    singleLine = true,
+                )
+                OutlinedButton(onClick = onLock) {
+                    Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Text("  قفل")
+                }
+            }
+
             if (ui.entries.isEmpty()) {
-                EmptyState("خاطره‌ای ثبت نشده — با + اولین خاطره را بنویس")
+                EmptyState("خاطره‌ای ثبت نشده — با دکمه + اولین خاطره را بنویس")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(bottom = 80.dp),
+                ) {
                     items(ui.entries, key = { it.id }) { entry ->
-                        Card(Modifier.fillMaxWidth()) {
+                        AppCard(onClick = { editor = entry }) {
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp),
+                                    .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Column(Modifier.weight(1f)) {
-                                    Text(entry.title.ifBlank { "(بی‌عنوان)" }, fontWeight = FontWeight.Bold)
+                                Column(
+                                    Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
                                     Text(
-                                        entry.content.take(60) + if (entry.content.length > 60) "…" else "",
+                                        entry.title.ifBlank { "(بی‌عنوان)" },
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Text(
+                                        entry.content.take(70) + if (entry.content.length > 70) "…" else "",
                                         style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                     Text(
                                         PersianCalendar.formatDate(entry.entryDate) +
-                                            if (entry.mood.isNotBlank()) "  ${entry.mood}" else "",
+                                            if (entry.mood.isNotBlank()) " • ${entry.mood}" else "",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.primary,
                                     )
                                 }
-                                IconButton(onClick = { editor = entry }) { Icon(Icons.Filled.Edit, "ویرایش") }
+                                IconButton(onClick = { editor = entry }) {
+                                    Icon(Icons.Filled.Edit, "ویرایش", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
                                 IconButton(onClick = { deleting = entry }) {
                                     Icon(Icons.Filled.Delete, "حذف", tint = MaterialTheme.colorScheme.error)
                                 }
@@ -363,7 +415,7 @@ private fun DiaryEditorDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial == null) "خاطره جدید" else "ویرایش خاطره") },
+        title = { Text(if (initial == null) "خاطره جدید" else "ویرایش خاطره", fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -371,7 +423,7 @@ private fun DiaryEditorDialog(
             ) {
                 PersianTextField("عنوان", title, { title = it })
                 PersianTextField("متن خاطره", content, { content = it }, singleLine = false, minLines = 6)
-                PersianTextField("حال و هوا (😊 😢 …)", mood, { mood = it })
+                PersianTextField("حال و هوا (شاد، آرام، …)", mood, { mood = it })
                 if (validation != null) Text(validation!!, color = MaterialTheme.colorScheme.error)
             }
         },
@@ -382,7 +434,7 @@ private fun DiaryEditorDialog(
                     return@TextButton
                 }
                 onSave(title.trim(), content, mood.trim(), initial?.entryDate ?: java.time.LocalDate.now())
-            }) { Text("ذخیره") }
+            }) { Text("ذخیره", fontWeight = FontWeight.Bold) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("انصراف") } },
     )

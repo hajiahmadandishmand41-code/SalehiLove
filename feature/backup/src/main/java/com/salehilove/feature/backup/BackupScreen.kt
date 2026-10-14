@@ -16,11 +16,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,14 +28,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.salehilove.core.common.AppResult
 import com.salehilove.core.common.PersianCalendar
-import com.salehilove.core.designsystem.components.PersianTextField
 import com.salehilove.core.designsystem.components.PinField
+import com.salehilove.core.designsystem.components.SectionCard
 import kotlinx.coroutines.launch
 
 private data class BackupUi(
@@ -66,10 +64,12 @@ fun BackupScreen(manager: BackupManager) {
         if (uri == null || password == null) return@rememberLauncherForActivityResult
         ui = ui.copy(busy = true, message = null)
         scope.launch {
-            when (val result = manager.exportTo(uri, password.toString().toCharArray())) {
+            when (val result = manager.exportTo(uri, password.toCharArray())) {
                 is AppResult.Success ->
-                    ui = ui.copy(busy = false, message = "پشتیبان ساخته شد " +
-                        "(${PersianCalendar.toPersianDigits(formatKb(result.value))} کیلوبایت)")
+                    ui = ui.copy(
+                        busy = false,
+                        message = "پشتیبان ساخته شد (${PersianCalendar.toPersianDigits(formatKb(result.value))} کیلوبایت)",
+                    )
                 is AppResult.Failure ->
                     ui = ui.copy(busy = false, message = "خطا در پشتیبان‌گیری: ${result.error.message}", isError = true)
             }
@@ -84,7 +84,7 @@ fun BackupScreen(manager: BackupManager) {
         if (uri == null || password == null) return@rememberLauncherForActivityResult
         ui = ui.copy(busy = true, message = null)
         scope.launch {
-            when (val result = manager.restoreFrom(uri, password.toString().toCharArray())) {
+            when (val result = manager.restoreFrom(uri, password.toCharArray())) {
                 is AppResult.Success -> {
                     val r = result.value
                     ui = ui.copy(
@@ -115,7 +115,7 @@ fun BackupScreen(manager: BackupManager) {
         }
     }
 
-    var passwordDialogFor by remember { mutableStateOf<String?>(null) } // "export" | "restore"
+    var passwordDialogFor by remember { mutableStateOf<String?>(null) }
 
     Column(
         Modifier
@@ -124,46 +124,40 @@ fun BackupScreen(manager: BackupManager) {
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("پشتیبان‌گیری و بازیابی", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(
-            "همه داده‌ها (واژه‌ها، مطالعات، یادداشت‌ها، خاطرات، برنامه‌ها و عکس‌ها) در یک فایل رمزنگاری‌شده " +
-                "با AES-GCM ذخیره می‌شود و با همان رمز روی هر دستگاهی قابل بازیابی است.",
+            "همه داده‌های SalehiLove ❤️ (واژه‌ها، مطالعات دینی، یادداشت‌ها، خاطرات، برنامه‌ها و عکس‌ها) در یک فایل رمزنگاری‌شده " +
+                "با AES-256-GCM ذخیره می‌شود و با همان رمز روی هر دستگاهی قابل بازیابی است.",
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Backup, null, tint = MaterialTheme.colorScheme.primary)
-                    Text("  پشتیبان‌گیری", fontWeight = FontWeight.Bold)
-                }
-                Text(
-                    "فایل پشتیبان روی حافظه دستگاه یا هر جای دیگر ذخیره می‌شود.",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                OutlinedButton(
-                    onClick = { passwordDialogFor = "export" },
-                    enabled = !ui.busy,
-                ) { Text("ساخت فایل پشتیبان") }
-            }
+        SectionCard(
+            title = "ساخت نسخه پشتیبان",
+            subtitle = "خروجی رمزنگاری‌شده روی حافظه دستگاه یا هر فضای دلخواه",
+            icon = Icons.Filled.Backup,
+        ) {
+            Button(
+                onClick = { passwordDialogFor = "export" },
+                enabled = !ui.busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("ساخت فایل پشتیبان") }
         }
 
-        Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Restore, null, tint = MaterialTheme.colorScheme.primary)
-                    Text("  بازیابی", fontWeight = FontWeight.Bold)
-                }
-                Text(
-                    "هشدار: بازیابی داده‌های فعلی همین بخش‌ها را جایگزین می‌کند. قبل از ادامه، یک پشتیبان بگیر.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-                OutlinedButton(
-                    onClick = { passwordDialogFor = "restore" },
-                    enabled = !ui.busy,
-                ) { Text("بازیابی از فایل") }
-            }
+        SectionCard(
+            title = "بازیابی از نسخه پشتیبان",
+            subtitle = "بازیابی تراکنشی داده‌ها از فایل پشتیبان",
+            icon = Icons.Filled.Restore,
+        ) {
+            Text(
+                "توجه: بازیابی، داده‌های فعلی را با محتوای فایل پشتیبان جایگزین می‌کند.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+            OutlinedButton(
+                onClick = { passwordDialogFor = "restore" },
+                enabled = !ui.busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) { Text("انتخاب فایل و بازیابی") }
         }
 
         if (ui.busy) {
@@ -176,9 +170,10 @@ fun BackupScreen(manager: BackupManager) {
             Text(
                 it,
                 color = if (ui.isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
             )
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(16.dp))
     }
 
     passwordDialogFor?.let { mode ->
@@ -188,11 +183,11 @@ fun BackupScreen(manager: BackupManager) {
         val isExport = mode == "export"
         AlertDialog(
             onDismissRequest = { passwordDialogFor = null },
-            title = { Text(if (isExport) "رمز پشتیبان" else "رمز فایل پشتیبان") },
+            title = { Text(if (isExport) "رمز نسخه پشتیبان" else "رمز فایل پشتیبان", fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PinField(
-                        label = "رمز عبور (حداقل ۴ نویسه)",
+                        label = "رمز عبور (۴ تا ۸ رقم)",
                         value = password,
                         onValueChange = { password = it; error = null },
                         errorMessage = error,
@@ -210,7 +205,7 @@ fun BackupScreen(manager: BackupManager) {
             confirmButton = {
                 TextButton(onClick = {
                     if (password.length < 4) {
-                        error = "رمز حداقل ۴ نویسه باشد"
+                        error = "رمز حداقل ۴ رقم باشد"
                         return@TextButton
                     }
                     if (isExport && password != confirm) {
@@ -225,24 +220,24 @@ fun BackupScreen(manager: BackupManager) {
                         pendingRestore = password
                         confirmRestore = true
                     }
-                }) { Text("ادامه") }
+                }) { Text("ادامه", fontWeight = FontWeight.Bold) }
             },
             dismissButton = { TextButton(onClick = { passwordDialogFor = null }) { Text("انصراف") } },
         )
     }
 
     if (confirmRestore) {
-        androidx.compose.material3.AlertDialog(
+        AlertDialog(
             onDismissRequest = { confirmRestore = false },
-            title = { Text("تأیید بازیابی") },
+            title = { Text("تأیید بازیابی", fontWeight = FontWeight.Bold) },
             text = {
-                Text("داده‌های فعلی با محتوای فایل پشتیبان جایگزین می‌شود. مطمئنی؟")
+                Text("داده‌های فعلی با محتوای فایل پشتیبان جایگزین می‌شود. مطمئن هستید؟")
             },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRestore = false
                     if (pendingRestore != null) openFile.launch(arrayOf("*/*"))
-                }) { Text("انتخاب فایل و بازیابی") }
+                }) { Text("انتخاب فایل و بازیابی", fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRestore = false; pendingRestore = null }) { Text("انصراف") }

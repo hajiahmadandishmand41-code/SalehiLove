@@ -11,7 +11,6 @@ class AppNavTest {
     fun `push and pop behave like a back stack`() {
         val nav = AppNav("home")
         assertEquals("home", nav.current)
-        assertTrue(nav.canPop.not() || true) // single item: canPop is false
         assertFalse(nav.canPop)
         assertFalse(nav.pop()) // cannot pop last
 
@@ -21,6 +20,17 @@ class AppNavTest {
         assertTrue(nav.pop())
         assertEquals("words", nav.current)
         assertTrue(nav.canPop)
+    }
+
+    @Test
+    fun `pushing the current route does not duplicate top of stack`() {
+        val nav = AppNav("home")
+        nav.push("words")
+        nav.push("words")
+        assertEquals(listOf("home", "words"), nav.state)
+        assertTrue(nav.pop())
+        assertEquals("home", nav.current)
+        assertFalse(nav.canPop)
     }
 
     @Test

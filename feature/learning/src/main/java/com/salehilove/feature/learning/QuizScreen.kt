@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -31,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.salehilove.core.common.PersianCalendar
 import com.salehilove.core.database.repo.WordRepository
+import com.salehilove.core.designsystem.components.AppCard
 import com.salehilove.core.designsystem.components.EmptyState
 import kotlin.random.Random
 
@@ -91,9 +90,12 @@ fun QuizScreen(
             .padding(16.dp)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (!loaded) {
-            Spacer(Modifier.height(32.dp)); Text("در حال ساخت آزمون…"); return@Column
+            Spacer(Modifier.height(32.dp))
+            Text("در حال ساخت آزمون…")
+            return@Column
         }
         if (ui.questions.isEmpty()) {
             Spacer(Modifier.height(32.dp))
@@ -104,52 +106,71 @@ fun QuizScreen(
 
         val q = ui.questions.getOrNull(ui.index)
         if (q == null) {
-            Spacer(Modifier.height(48.dp))
-            Text("پایان آزمون 🎓", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            val pct = if (ui.questions.isEmpty()) 0 else ui.correctCount * 100 / ui.questions.size
-            Text(
-                "امتیاز: ${PersianCalendar.toPersianDigits(ui.correctCount.toString())} از " +
-                    PersianCalendar.toPersianDigits(ui.questions.size.toString()) +
-                    " (${PersianCalendar.toPersianDigits(pct.toString())}٪)",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onFinished) { Text("بازگشت به واژه‌ها") }
+            Spacer(Modifier.height(24.dp))
+            AppCard {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text("پایان آزمون", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    val pct = if (ui.questions.isEmpty()) 0 else ui.correctCount * 100 / ui.questions.size
+                    Text(
+                        "امتیاز: ${PersianCalendar.toPersianDigits(ui.correctCount.toString())} از " +
+                            PersianCalendar.toPersianDigits(ui.questions.size.toString()) +
+                            " (${PersianCalendar.toPersianDigits(pct.toString())}٪)",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Button(onClick = onFinished, modifier = Modifier.fillMaxWidth()) {
+                        Text("بازگشت به واژگان")
+                    }
+                }
+            }
             return@Column
         }
 
-        LinearProgressIndicator(progress = { ui.index.toFloat() / ui.questions.size }, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(24.dp))
-        Text("سؤال ${PersianCalendar.toPersianDigits((ui.index + 1).toString())} از ${PersianCalendar.toPersianDigits(ui.questions.size.toString())}")
-        Spacer(Modifier.height(16.dp))
-        Text(q.promptWord, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        if (q.phonetic.isNotBlank()) Text(q.phonetic, style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(24.dp))
+        LinearProgressIndicator(
+            progress = { ui.index.toFloat() / ui.questions.size },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            "سؤال ${PersianCalendar.toPersianDigits((ui.index + 1).toString())} از ${PersianCalendar.toPersianDigits(ui.questions.size.toString())}",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        AppCard {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(q.promptWord, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                if (q.phonetic.isNotBlank()) {
+                    Text("/${q.phonetic}/", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
 
         q.options.forEachIndexed { i, option ->
             val chosen = ui.selected == i
             val isCorrectOption = option == q.correct
-            val container = when {
-                ui.selected == null -> CardDefaults.cardColors()
-                chosen && isCorrectOption -> CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                )
-                chosen && !isCorrectOption -> CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                )
-                ui.selected != null && isCorrectOption -> CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                )
-                else -> CardDefaults.cardColors()
+            val bgColor = when {
+                ui.selected == null -> MaterialTheme.colorScheme.surfaceVariant
+                chosen && isCorrectOption -> MaterialTheme.colorScheme.primaryContainer
+                chosen && !isCorrectOption -> MaterialTheme.colorScheme.errorContainer
+                ui.selected != null && isCorrectOption -> MaterialTheme.colorScheme.primaryContainer
+                else -> MaterialTheme.colorScheme.surfaceVariant
             }
-            Card(
+            AppCard(
+                containerColor = bgColor,
                 onClick = { if (ui.selected == null) ui = ui.copy(selected = i) },
-                colors = container,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
             ) {
                 Text(
                     option,
@@ -158,14 +179,14 @@ fun QuizScreen(
                         .padding(16.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
                 )
             }
         }
 
         if (ui.selected != null) {
-            Spacer(Modifier.height(12.dp))
             Text(
-                if (q.options[ui.selected!!] == q.correct) "درست بود ✅" else "پاسخ درست: ${q.correct}",
+                if (q.options[ui.selected!!] == q.correct) "پاسخ درست است" else "پاسخ درست: ${q.correct}",
                 color = if (q.options[ui.selected!!] == q.correct) {
                     MaterialTheme.colorScheme.primary
                 } else {
@@ -173,35 +194,22 @@ fun QuizScreen(
                 },
                 fontWeight = FontWeight.Bold,
             )
-            Spacer(Modifier.height(12.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (ui.index + 1 < ui.questions.size) {
-                    Button(
-                        onClick = {
-                            val wasCorrect = q.options[ui.selected!!] == q.correct
-                            ui = ui.copy(
-                                index = ui.index + 1,
-                                selected = null,
-                                correctCount = ui.correctCount + if (wasCorrect) 1 else 0,
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("سؤال بعد") }
-                } else {
-                    Button(
-                        onClick = {
-                            val wasCorrect = q.options[ui.selected!!] == q.correct
-                            ui = ui.copy(
-                                index = ui.index + 1,
-                                selected = null,
-                                correctCount = ui.correctCount + if (wasCorrect) 1 else 0,
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                    ) { Text("دیدن نتیجه") }
+                Button(
+                    onClick = {
+                        val wasCorrect = q.options[ui.selected!!] == q.correct
+                        ui = ui.copy(
+                            index = ui.index + 1,
+                            selected = null,
+                            correctCount = ui.correctCount + if (wasCorrect) 1 else 0,
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(if (ui.index + 1 < ui.questions.size) "سؤال بعد" else "مشاهده نتیجه")
                 }
                 TextButton(onClick = onFinished) { Text("پایان") }
             }
